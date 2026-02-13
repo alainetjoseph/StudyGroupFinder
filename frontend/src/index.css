@@ -1,1 +1,12 @@
 @import "tailwindcss";
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1f2937 inset !important; /* gray-800 */
+  box-shadow: 0 0 0 1000px #1f2937 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  border: 1px solid #374151 !important; /* gray-700 */
+  transition: background-color 5000s ease-in-out 0s;
+}
