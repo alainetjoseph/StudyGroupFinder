@@ -8,6 +8,7 @@ import ProtectedRoutes from './Utils/ProtectedRoutes'
 import { AuthProvider } from './contexts/AuthContext'
 import CreateGroup from './components/CreateGroup'
 import FindGroups from './components/FindGroups'
+import GroupPage from './pages/group/GroupPage'
 
 function App() {
 
@@ -21,6 +22,7 @@ function App() {
             <Route path='/' element={<Home />} />
             <Route path='/creategroup' element={<CreateGroup />} />
             <Route path='/findgroup' element={<FindGroups />} />
+            <Route path='/group' element={<GroupPage />} />
           </Route>
         </Routes>
         <SnackbarProvider />
