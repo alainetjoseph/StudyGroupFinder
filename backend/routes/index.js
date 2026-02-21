@@ -3,15 +3,9 @@ var router = express.Router();
 var bcrypt = require('bcrypt')
 var User = require('../Modals/Users')
 var userHelper = require("../helper/userHelpers.js")
+var auth = require('../middleware/auth.js')
 /* GET home page. */
 
-const auth = (req, res, next) => {
-  console.log("auth", req.session.user)
-  if (!req.session.user) {
-    return res.status(400).json({ status: false, msg: "auth Failed, Try Logging in !!" })
-  }
-  next()
-}
 
 router.post('/signup', async function(req, res, next) {
   try {

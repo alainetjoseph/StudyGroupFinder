@@ -35,18 +35,21 @@ module.exports = {
   getJoinedGroups: function(userId) {
     return new Promise(async (resolve, reject) => {
       try {
-        let user = await User.findById(new mongoose.Types.ObjectId(userId))
+        const user = await User.findById(userId);
 
-        if (!user.groupsJoined.length) return resolve([]);
-        Groups.findById({ _id: { $in: user.groupsJoined } }).select("+groupName").then((groups) => {
-          resolve(groups)
-        }).catch((error) => {
-          console.log(error)
-          reject()
-        })
-      }
-      catch {
-        reject()
+        if (!user || !user.groupsJoined.length) {
+          resolve([]);
+        }
+
+        const groups = await Groups.find({
+          _id: { $in: user.groupsJoined }
+        }).select("groupName subject description");
+
+        resolve(groups);
+
+      } catch (error) {
+        console.error(error);
+        throw error;
       }
     })
   }

@@ -15,7 +15,7 @@ export default function CreateGroup() {
     try {
       const storedUser = JSON.parse(sessionStorage.getItem("user"));
 
-      const res = await fetch("http://localhost:3000/groups/create", {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/groups/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

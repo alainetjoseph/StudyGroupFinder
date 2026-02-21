@@ -28,7 +28,7 @@ const Signup = () => {
       return alert("Incoorect Confirm Password");
     }
     delete form.confirmPassword
-    axios.post("http://localhost:3000/signup", form, {
+    axios.post(`${import.meta.env.VITE_BACKEND_URL}/signup`, form, {
       withCredentials: true
     }).then(() => {
       console.log("signup successful !!");

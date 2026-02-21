@@ -7,7 +7,7 @@ const ProtectedRoutes = () => {
   const [loading, setLoading] = useState(true)
   const location = useLocation();
   useEffect(() => {
-    axios.get("http://localhost:3000/me", { withCredentials: true })
+    axios.get(`${import.meta.env.VITE_BACKEND_URL}/me`, { withCredentials: true })
       .then((res) => {
         console.log("protection", res.data.user);
         setUser(res.data.user);

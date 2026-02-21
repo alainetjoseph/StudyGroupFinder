@@ -19,7 +19,7 @@ export default function Login() {
     }
 
     axios
-      .post("http://localhost:3000/login", { email, password }, { withCredentials: true })
+      .post(`${import.meta.env.VITE_BACKEND_URL}/login`, { email, password }, { withCredentials: true })
       .then(() => navigate("/"))
       .catch((err) => console.log(err));
   }

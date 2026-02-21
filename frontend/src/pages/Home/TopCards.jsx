@@ -31,7 +31,7 @@ const TopCards = () => {
     );
   }
   useEffect(() => {
-    axios.post(`http://localhost:3000/topcards`, { id: user._id }, { withCredentials: true })
+    axios.post(`${import.meta.env.VITE_BACKEND_URL}/topcards`, { id: user._id }, { withCredentials: true })
       .then((res) => {
         console.log(res.data)
         setCards(res.data.cards)

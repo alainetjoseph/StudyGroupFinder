@@ -1,13 +1,30 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Search, Users } from "lucide-react";
 import Sidebar from "./Sidebar";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { enqueueSnackbar } from "notistack";
+import { AuthContext } from "../contexts/AuthContext"
 
 export default function FindGroups() {
   const [groups, setGroups] = useState([]);
+  const { user } = useContext(AuthContext)
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate()
+  function handleGroupJoin(groupId) {
+    axios.post(`${import.meta.env.VITE_BACKEND_URL}/groups/join-group`, { groupId, userId: user._id }, {
+      withCredentials: true
+    }).then(() => {
+      enqueueSnackbar("joined group", { variant: 'success', anchorOrigin: { horizontal: "right", vertical: "bottom" } })
+      navigate("/group", { state: { groupId } })
+    })
+      .catch(() => {
+        enqueueSnackbar("cannot join group", { variant: "error", anchorOrigin: { horizontal: "right", vertical: 'bottom' } })
+      })
+  }
 
   useEffect(() => {
-    fetch("http://localhost:3000/groups")
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/groups`)
       .then(res => res.json())
       .then(data => setGroups(data))
       .catch(err => console.log("FETCH GROUPS ERROR:", err));
@@ -66,8 +83,9 @@ export default function FindGroups() {
             {filteredGroups.map((group) => (
               <div
                 key={group._id}
-                className="bg-[#1e2530]/60 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition"
+                className="bg-[#1e2530]/60 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition flex flex-col h-full"
               >
+
                 {/* Header */}
                 <div className="flex justify-between items-start mb-4">
                   <h2 className="text-lg font-semibold">
@@ -80,7 +98,7 @@ export default function FindGroups() {
                 </div>
 
                 {/* Description */}
-                <p className="text-sm text-gray-400 mb-6">
+                <p className="text-sm text-gray-400 mb-6 line-clamp-3">
                   {group.description}
                 </p>
 
@@ -91,8 +109,11 @@ export default function FindGroups() {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex gap-3">
-                  <button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition shadow-md shadow-indigo-600/20">
+                <div className="flex gap-3 mt-auto">
+                  <button
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition shadow-md shadow-indigo-600/20"
+                    onClick={() => handleGroupJoin(group._id)}
+                  >
                     Join Group
                   </button>
 

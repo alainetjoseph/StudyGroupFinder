@@ -1,41 +1,16 @@
 import React from "react";
 import { MessageCircle, Users, Calendar, LogOut } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import Sidebar from "../../components/Sidebar";
 
 export default function StudyGroupPage() {
+  const location = useLocation()
+  const { groupId, userId } = location.state
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex">
       {/* Sidebar */}
-      <aside className="hidden md:flex md:flex-col w-64 bg-slate-900 border-r border-slate-800 p-6 justify-between">
-        <div>
-          <div className="mb-10">
-            <h1 className="text-2xl font-bold text-indigo-400">StudyGroup</h1>
-            <p className="text-sm text-slate-400">Find your study tribe</p>
-          </div>
-
-          <nav className="space-y-4 text-slate-300">
-            {[
-              "Dashboard",
-              "Find Groups",
-              "Create Group",
-              "Notifications",
-              "Profile",
-              "Settings",
-            ].map((item) => (
-              <div
-                key={item}
-                className="hover:text-white cursor-pointer transition"
-              >
-                {item}
-              </div>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-2 text-red-400 cursor-pointer">
-          <LogOut size={18} />
-          Logout
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 space-y-8">

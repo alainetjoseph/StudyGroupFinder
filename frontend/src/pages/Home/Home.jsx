@@ -15,7 +15,7 @@ export default function Home() {
     if (!user._id) {
       return
     }
-    axios.post("http://localhost:3000/joined-groups", {}, { withCredentials: true })
+    axios.post(`${import.meta.env.VITE_BACKEND_URL}/joined-groups`, {}, { withCredentials: true })
       .then((res) => {
         console.log(res.data.groups);
         setJoinedGroups(res.data.groups);
