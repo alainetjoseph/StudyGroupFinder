@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cors({
-  origin: ["http://localhost:5173", "https://sgf-pi.vercel.app"],
+  origin: ["http://localhost:5173", "https://study-group-finder-eta.vercel.app"],
   credentials: true
 }))
 app.use(session({
