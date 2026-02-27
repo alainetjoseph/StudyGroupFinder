@@ -127,7 +127,7 @@ export default function Login() {
               />
             </div>
 
-            <button className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition active:scale-[0.98]">
+            <button className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition active:scale-[0.98]" >
               Sign In →
             </button>
           </form>
@@ -146,7 +146,7 @@ export default function Login() {
 
           <p className="mt-10 text-center text-sm text-gray-500">
             Don't have an account?
-            <a href="#" className="ml-1 text-indigo-400 hover:text-white">
+            <a href="/signup" className="ml-1 text-indigo-400 hover:text-white">
               Create account
             </a>
           </p>

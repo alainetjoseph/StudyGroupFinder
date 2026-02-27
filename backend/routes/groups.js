@@ -4,7 +4,8 @@ var Group = require("../Modals/Groups");
 const Users = require("../Modals/Users");
 var auth = require("../middleware/auth");
 const Groups = require("../Modals/Groups");
-var mongoose = require("mongoose")
+var mongoose = require("mongoose");
+const Message = require("../Modals/Message");
 /* ================= CREATE GROUP ================= */
 router.post("/create", async (req, res) => {
   try {
@@ -96,4 +97,30 @@ router.post("/join-group", auth, async (req, res) => {
   }
 });
 
+router.get("/:groupId/messages", async (req, res) => {
+  try {
+    const messages = await Message.find({
+      group: req.params.groupId,
+    })
+      .populate("sender", "name")
+      .sort({ createdAt: 1 });
+
+    res.status(200).json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/:id", auth, async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    console.log("groupId")
+
+    let group = await Groups.findById(groupId).populate("members", "name")
+    res.status(200).json({ group })
+  }
+  catch (err) {
+    res.status(500).json({ msg: err.message })
+  }
+})
 module.exports = router;

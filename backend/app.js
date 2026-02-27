@@ -11,6 +11,7 @@ var usersRouter = require('./routes/users');
 var groupRouter = require('./routes/groups');
 
 const session = require('express-session');
+const { default: MongoStore } = require("connect-mongo");
 
 var app = express();
 
@@ -23,12 +24,22 @@ app.use(cors({
   origin: ["http://localhost:5173", "https://study-group-finder-eta.vercel.app"],
   credentials: true
 }))
+app.set("trust proxy", 1)
 app.use(session({
   secret: process.env.TOKEN_SECRET,
-  cookie: { maxAge: 1000 * 60 * 10 },
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URL,
+    collectionName: "sessions",
+  }),
+  cookie: {
+    maxAge: 1000 * 60 * 10,
+    secure: process.env.mode === "production",
+    httpOnly: true
+  },
   resave: false,
   saveUninitialized: false
 }))
+
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);

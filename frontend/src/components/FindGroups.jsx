@@ -16,7 +16,7 @@ export default function FindGroups() {
       withCredentials: true
     }).then(() => {
       enqueueSnackbar("joined group", { variant: 'success', anchorOrigin: { horizontal: "right", vertical: "bottom" } })
-      navigate("/group", { state: { groupId } })
+      navigate(`/group/${groupId}`)
     })
       .catch(() => {
         enqueueSnackbar("cannot join group", { variant: "error", anchorOrigin: { horizontal: "right", vertical: 'bottom' } })
@@ -117,7 +117,7 @@ export default function FindGroups() {
                     Join Group
                   </button>
 
-                  <button className="px-4 py-2 bg-[#111827] hover:bg-gray-700 border border-gray-700 rounded-lg transition">
+                  <button className="px-4 py-2 bg-[#111827] hover:bg-gray-700 border border-gray-700 rounded-lg transition" onClick={() => navigate(`/group/${group._id}`)}>
                     View
                   </button>
                 </div>

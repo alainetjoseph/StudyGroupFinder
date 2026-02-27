@@ -9,9 +9,11 @@ import { AuthProvider } from './contexts/AuthContext'
 import CreateGroup from './components/CreateGroup'
 import FindGroups from './components/FindGroups'
 import GroupPage from './pages/group/GroupPage'
+import AdminHome from './pages/AdminHome'
+import { io } from 'socket.io-client'
 
 function App() {
-
+  io({ autoConnect: false })
   return (
     <>
       <AuthProvider>
@@ -22,7 +24,8 @@ function App() {
             <Route path='/' element={<Home />} />
             <Route path='/creategroup' element={<CreateGroup />} />
             <Route path='/findgroup' element={<FindGroups />} />
-            <Route path='/group' element={<GroupPage />} />
+            <Route path='/group/:groupId' element={<GroupPage />} />
+            <Route path='/admin' element={<AdminHome />} />
           </Route>
         </Routes>
         <SnackbarProvider />
