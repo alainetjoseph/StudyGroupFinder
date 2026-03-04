@@ -22,7 +22,15 @@ let userSchema = new mongoose.Schema(
     isBanned: {
       type: Boolean,
       default: false
-    }
+    },
+    subjects: {
+      type: [String],
+      default: []
+    },
+    bio: {
+      type: String,
+      default: ""
+    },
   }
 )
 

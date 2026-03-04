@@ -152,6 +152,7 @@ router.post("/leave", auth, async (req, res) => {
   }
 })
 
+
 router.post(
   "/:groupId/upload",
   upload.single("file"),
@@ -163,27 +164,30 @@ router.post(
 
       const filePath = req.file.path;
 
+      // Scan file
       const scanResult = await scanFile(filePath);
 
-      if (scanResult.includes("FOUND")) {
-        fs.unlinkSync(filePath); // delete infected file
+      if (scanResult.infected) {
+        fs.unlinkSync(filePath);
         return res.status(400).json({
           message: "File contains malware and was rejected",
+          viruses: scanResult.viruses,
         });
       }
 
-      // Move file to permanent folder
-      const finalPath = path.join(
-        "uploads/groupFiles",
-        req.file.filename
-      );
+      // Ensure destination folder exists
+      const uploadDir = path.join(__dirname, "..", "uploads", "groupFiles");
+      fs.mkdirSync(uploadDir, { recursive: true });
 
+      // Move file
+      const finalPath = path.join(uploadDir, req.file.filename);
       fs.renameSync(filePath, finalPath);
 
       res.status(200).json({
         message: "File uploaded successfully",
         filename: req.file.filename,
       });
+
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Upload failed" });
