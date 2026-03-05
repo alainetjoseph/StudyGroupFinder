@@ -1,26 +1,33 @@
-const clamd = require("clamdjs");
-const net = require("net");
+const NodeClam = require("clamscan");
 
-// connect to local clamd daemon socket
-const scanner = clamd.createScanner(
-  "/var/run/clamav/clamd.ctl",
-  3310,
-  "127.0.0.1"
-);
+let clam;
 
-const scanFile = async (filePath) => {
+async function initClam() {
+  if (!clam) {
+    clam = await new NodeClam().init({
+      clamdscan: {
+        socket: "/var/run/clamav/clamd.ctl",
+        timeout: 60000
+      },
+      preference: "clamdscan"
+    });
+  }
+  return clam;
+}
+
+async function scanFile(filePath) {
   try {
-    const result = await scanner.scanFile(filePath);
+    const scanner = await initClam();
+    const { isInfected, viruses } = await scanner.scanFile(filePath);
 
-    if (result.includes("FOUND")) {
-      return "FOUND";
-    }
-
-    return "OK";
+    return {
+      infected: isInfected,
+      viruses
+    };
   } catch (err) {
-    console.error("ClamAV Error:", err);
+    console.error("ClamAV error:", err);
     throw new Error("Virus scan failed");
   }
-};
+}
 
 module.exports = scanFile;

@@ -11,6 +11,8 @@ import FindGroups from './components/FindGroups'
 import GroupPage from './pages/group/GroupPage'
 import AdminHome from './pages/AdminHome'
 import AdminRoutes from './Utils/AdminRoutes'
+import Settings from './components/SettingsPage'
+import Profile from './components/ProfilePage'
 
 function App() {
   return (
@@ -24,6 +26,8 @@ function App() {
             <Route path='/creategroup' element={<CreateGroup />} />
             <Route path='/findgroup' element={<FindGroups />} />
             <Route path='/group/:groupId' element={<GroupPage />} />
+            <Route path='/settings' element={<Settings />} />
+            <Route path='/profile' element={<Profile />} />
             <Route path='/admin' element={<AdminHome />} />
           </Route>
         </Routes>

@@ -134,4 +134,91 @@ router.post("/reports", auth, async (req, res) => {
   res.json(report);
 });
 
+// GET PROFILE
+
+router.get("/profile", auth, async (req, res) => {
+
+  try {
+
+    const user = await User.findById(req.session.user).select("-pass");
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        msg: "User not found"
+      });
+    }
+
+    res.status(200).json(user);
+
+  } catch (error) {
+
+    res.status(500).json({
+      status: false,
+      msg: "Error fetching profile"
+    });
+
+  }
+
+});
+
+router.put("/profile/:id", auth, async (req, res) => {
+  try {
+
+    const { name, bio, subjects } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        name,
+        bio,
+        subjects
+      },
+      { returnDocument: "after" }
+    );
+
+    res.status(200).json({
+      status: true,
+      msg: "Profile Updated",
+      user: updatedUser
+    });
+
+  } catch (err) {
+
+    res.status(500).json({
+      status: false,
+      msg: "Profile update failed"
+    });
+
+  }
+});
+
+router.put("/change-password/:id", auth, async (req, res) => {
+  try {
+
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.session.user);
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.pass);
+
+    if (!isMatch) {
+      return res.status(400).json({ status: false, message: "Current password incorrect" });
+    }
+
+    user.pass = await bcrypt.hash(newPassword, 10);
+
+    await user.save();
+
+    res.json({ status: true, message: "Password updated successfully" });
+
+  } catch (err) {
+    res.status(500).json({ status: false, message: "Server error" });
+  }
+});
+
 module.exports = router;
