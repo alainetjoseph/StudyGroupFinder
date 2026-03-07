@@ -1,12 +1,131 @@
 @import "tailwindcss";
+
+@theme {
+  /* ── Core surfaces ── */
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-card-elevated: var(--card-elevated);
+  --color-sidebar: var(--sidebar);
+  --color-input-background: var(--input-background);
+
+  /* ── Text ── */
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--text-muted);
+
+  /* ── Borders / overlays ── */
+  --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
+  --color-bg-overlay: var(--bg-overlay);
+
+  /* ── Brand ── */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+
+  /* ── Semantic status ── */
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --color-ring: var(--ring);
+}
+
+/* Gradient utility — use class="bg-gradient-primary" */
+@utility bg-gradient-primary {
+  background: var(--gradient-primary);
+}
+
+/* Sidebar surface utility */
+@utility bg-sidebar {
+  background-color: var(--sidebar);
+}
+
+/* Elevated card utility */
+@utility bg-card-elevated {
+  background-color: var(--card-elevated);
+}
+
+/* Soft glow for primary buttons */
+@utility shadow-primary-glow {
+  box-shadow: 0 0 18px 0 rgba(99, 102, 241, 0.35);
+}
+
+/* ───────────────────────────────────────────────
+   Design Tokens  (single dark theme)
+─────────────────────────────────────────────── */
+:root {
+  /* ── Layered backgrounds ── */
+  --background:    #0b0f1a;   /* deep navy-black main canvas       */
+  --card:          #131929;   /* card surface — slightly lighter    */
+  --card-elevated: #1a2235;   /* elevated card / modal surface      */
+  --sidebar:       #080c15;   /* sidebar — darker than background   */
+  --input-background: #0f1627; /* form inputs                       */
+
+  /* ── Typography ── */
+  --foreground:       #f1f5ff;   /* primary text — near-white, cool   */
+  --muted-foreground: #a0aec8;   /* secondary text — cool slate-blue  */
+  --text-muted:       #5c6a88;   /* tertiary / placeholder text       */
+
+  /* ── Borders & overlays ── */
+  --border:       rgba(99, 120, 180, 0.12);   /* subtle blue-tinted border  */
+  --border-muted: rgba(99, 120, 180, 0.22);   /* slightly stronger border   */
+  --bg-overlay:   rgba(11, 15, 26, 0.75);     /* modal/backdrop overlay     */
+
+  /* ── Brand accent — indigo → purple ── */
+  --primary:       #6366f1;   /* indigo base                        */
+  --primary-hover: #4f46e5;   /* deeper indigo on hover             */
+  --accent:        #a855f7;   /* purple accent                      */
+  --accent-soft:   rgba(168, 85, 247, 0.15);  /* soft purple tint bg        */
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+
+  /* ── Semantic status ── */
+  --destructive: #f43f5e;
+  --success:     #22d3a5;
+  --warning:     #fbbf24;
+
+  /* ── Focus ring ── */
+  --ring: rgba(99, 102, 241, 0.5);
+}
+
+/* ───────────────────────────────────────────────
+   Base resets
+─────────────────────────────────────────────── */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--card-elevated);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ── Autofill ── */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #1f2937 inset !important; /* gray-800 */
-  box-shadow: 0 0 0 1000px #1f2937 inset !important;
-  -webkit-text-fill-color: #ffffff !important;
-  caret-color: #ffffff !important;
-  border: 1px solid #374151 !important; /* gray-700 */
-  transition: background-color 5000s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0 1000px var(--input-background) inset !important;
+  box-shadow: 0 0 0 1000px var(--input-background) inset !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  caret-color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+  transition: background-color 5s ease-in-out 0s;
 }

@@ -42,7 +42,11 @@ const groupSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   }
+  // lockReason: {
+  //   type: String,
+  //   default: ""
+  // }
 
 }, { timestamps: true });
 
-module.exports = mongoose.model("Group", groupSchema);
+module.exports = mongoose.model("groups", groupSchema);

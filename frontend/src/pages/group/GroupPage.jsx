@@ -1,397 +1,712 @@
-import React, { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MessageCircle, Users, Calendar } from "lucide-react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import Sidebar from "../../components/Sidebar";
+import React, {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState
+} from "react";
+
+import { Users, MoreVertical, Flag, FileText, Image as ImageIcon, FileSpreadsheet, Presentation, File } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { enqueueSnackbar } from "notistack";
-
 import { io } from "socket.io-client";
+
 import { AuthContext } from "../../contexts/AuthContext";
 import ConfirmModal from "../../components/ConfirmModal";
+import ReportModal from "../../components/ReportModal";
 
 const socket = io(import.meta.env.VITE_BACKEND_URL, {
-  withCredentials: true,
+  withCredentials: true
 });
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
-/* ---------------- Skeleton Component ---------------- */
-
-const Skeleton = ({ className }) => {
-  return (
-    <div
-      className={`bg-slate-800 animate-pulse rounded-lg ${className}`}
-    />
-  );
-};
-
-/* ---------------- Main Component ---------------- */
+const Skeleton = ({ className }) => (
+  <div className={`bg-card animate-pulse rounded-lg ${className}`} />
+);
 
 export default function StudyGroupPage() {
-  const location = useLocation();
-  const { user } = useContext(AuthContext)
-  const { groupId } = useParams()
-  const navigate = useNavigate()
-  console.log(groupId)
+  const { user } = useContext(AuthContext);
+  const { groupId } = useParams();
+  const navigate = useNavigate();
 
   const [group, setGroup] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false)
-
+  const [materials, setMaterials] = useState([]);
   const [messages, setMessages] = useState([]);
-  const chatContainerRef = useRef(null);
-  const bottomRef = useRef(null)
+
+  const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
+  const [editingMsg, setEditingMsg] = useState(null);
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+
+  const [open, setOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  const [reportTarget, setReportTarget] = useState({
+    id: null,
+    type: null
+  });
+
+  const fileInputRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const materialsRef = useRef(null);
+  const lastMessageRef = useRef(null);
+  const inputRef = useRef(null);
+  const isMember = group?.members?.some((m) => String(m._id || m) === String(user?._id));
+
+  async function handleJoinGroup() {
+    try {
+      await axios.post(
+        `${BACKEND}/groups/join-group`,
+        { groupId, userId: user._id },
+        { withCredentials: true }
+      );
+      enqueueSnackbar("Joined group!", { variant: "success" });
+      // Refresh group data to update membership status
+      const res = await axios.get(`${BACKEND}/groups/${groupId}`, { withCredentials: true });
+      setGroup(res.data.group);
+    } catch (error) {
+      const errorMsg = error.response?.data?.msg || "Cannot join group";
+      enqueueSnackbar(errorMsg, { variant: "error" });
+    }
+  }
+
+  /* ================= FETCH GROUP ================= */
   useEffect(() => {
     if (!groupId) return;
-    console.log("group calling")
+
     axios
       .get(`${BACKEND}/groups/${groupId}`, { withCredentials: true })
       .then((res) => {
-        // Small delay for smooth UX
-        setTimeout(() => {
-          setGroup(res.data.group);
-          console.log(res.data.group);
-          setLoading(false);
-        }, 400);
+        setGroup(res.data.group);
+        setLoading(false);
       })
       .catch(() => {
-        setLoading(false)
-        enqueueSnackbar("try again by refreshing", {
-          variant: "error", anchorOrigin: {
-            vertical: "bottom",
-            horizontal: "right"
-          }
-        })
+        setLoading(false);
+        enqueueSnackbar("Try refreshing the page", { variant: "error" });
       });
   }, [groupId]);
+
+  /* ================= FETCH MATERIALS ================= */
+  useEffect(() => {
+    axios
+      .get(`${BACKEND}/groups/${groupId}/materials`, {
+        withCredentials: true
+      })
+      .then((res) => setMaterials(res.data));
+  }, [groupId]);
+
+  /* ================= SOCKET CHAT ================= */
+  useEffect(() => {
+    if (!groupId) return;
+
+    socket.emit("joinGroup", { groupId });
+
+    axios
+      .get(`${BACKEND}/groups/${groupId}/messages`, {
+        withCredentials: true
+      })
+      .then((res) => setMessages(res.data));
+
+    const handleReceive = (message) => {
+      setMessages((prev) => {
+        const filtered = prev.filter(m => !(m.optimistic && m.text === message.text && (m.sender?._id || m.sender) === (message.sender?._id || message.sender)));
+        return [...filtered, message];
+      });
+    };
+
+    const handleUpdate = (data) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === data.messageId
+            ? { ...m, text: data.text, edited: true }
+            : m
+        )
+      );
+    };
+
+    const handleDelete = (data) => {
+      setMessages((prev) => prev.filter((m) => m._id !== data.messageId));
+    };
+
+    socket.on("receiveMessage", handleReceive);
+    socket.on("messageUpdated", handleUpdate);
+    socket.on("messageDeleted", handleDelete);
+    socket.on("errorMessage", (data) => {
+      enqueueSnackbar(data.message, { variant: "error" });
+    });
+
+    return () => {
+      socket.off("receiveMessage", handleReceive);
+      socket.off("messageUpdated", handleUpdate);
+      socket.off("messageDeleted", handleDelete);
+      socket.off("errorMessage");
+    };
+  }, [groupId]);
+
+  /* ================= SMART AUTO SCROLL ================= */
+
+  // useLayoutEffect(() => {
+  //   const container = chatContainerRef.current;
+  //   if (!container) return;
+  //
+  //   const isNearBottom =
+  //     container.scrollHeight -
+  //     container.scrollTop -
+  //     container.clientHeight <
+  //     100;
+  //
+  //   if (isNearBottom) {
+  //     container.scrollTop = container.scrollHeight;
+  //   }
+  // }, [messages]);
 
   useLayoutEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
 
     container.scrollTop = container.scrollHeight;
-  }, [messages.length]);
+  }, [messages]);
 
+  /* ================= CLICK OUTSIDE MENU ================= */
   useEffect(() => {
-    if (!groupId) return;
+    const closeMenu = () => setOpenMenuId(null);
+    window.addEventListener("click", closeMenu);
+    return () => window.removeEventListener("click", closeMenu);
+  }, []);
 
-    // leave previous group
-    socket.emit("leaveGroup", { groupId: socket.currentGroup });
-
-    // join new group
-    socket.emit("joinGroup", { groupId });
-
-    // store current group on socket instance
-    socket.currentGroup = groupId;
-
-    axios
-      .get(`${BACKEND}/groups/${groupId}/messages`, {
-        withCredentials: true,
-      })
-      .then((res) => setMessages(res.data));
-
-    const handleReceive = (message) => {
-      setMessages((prev) => [...prev, message]);
-    };
-
-    socket.on("receiveMessage", handleReceive);
-
-    return () => {
-      socket.off("receiveMessage", handleReceive);
-    };
-  }, [groupId]);
-
-  const sendMessage = () => {
+  /* ================= SEND MESSAGE ================= */
+  const sendMessage = async () => {
     if (!newMessage.trim()) return;
-    console.log(user)
+
+    if (editingMsg) {
+      try {
+        const res = await axios.put(
+          `${BACKEND}/groups/message/edit/${editingMsg._id}`,
+          { text: newMessage },
+          { withCredentials: true }
+        );
+
+        setMessages(prev =>
+          prev.map(m =>
+            m._id === editingMsg._id
+              ? { ...m, text: res.data.message.text, edited: true }
+              : m
+          )
+        );
+
+        setEditingMsg(null);
+        setNewMessage("");
+        enqueueSnackbar("Message edited", { variant: "success" });
+        return;
+      } catch {
+        enqueueSnackbar("Edit failed", { variant: "error" });
+      }
+    }
+
+    let isQuestion = false;
+    let text = newMessage;
+
+    if (newMessage.trim().startsWith("/q ")) {
+      isQuestion = true;
+      text = newMessage.replace("/q ", "");
+    }
+
+    const optimisticMessage = {
+      _id: `temp-${Date.now()}`,
+      sender: user,
+      text: text,
+      isQuestion: isQuestion,
+      createdAt: new Date().toISOString(),
+      optimistic: true
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+    setNewMessage("");
+
     socket.emit("sendMessage", {
       groupId,
-      userId: user,
-      text: newMessage,
+      userId: user?._id,
+      text,
+      isQuestion
     });
-
-    setNewMessage("");
   };
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
 
+  /* ================= FILE UPLOAD ================= */
+  const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("messageId", selectedMessageId);
 
     try {
-      await axios.post(
+      setUploading(true);
+      setUploadProgress(0);
+
+      const res = await axios.post(
         `${BACKEND}/groups/${groupId}/upload`,
         formData,
         {
-          withCredentials: true
+          withCredentials: true,
+          onUploadProgress: (e) => {
+            const percent = Math.round((e.loaded * 100) / e.total);
+            setUploadProgress(percent);
+          }
         }
       );
 
-      enqueueSnackbar("File uploaded successfully", { variant: "success" });
-    } catch (err) {
-      enqueueSnackbar(
-        err.response?.data?.message || "Upload failed",
-        { variant: "error" }
-      );
+      setMaterials((prev) => [res.data, ...prev]);
+      enqueueSnackbar("Material uploaded", { variant: "success" });
+      setSelectedMessageId(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (Err) {
+      enqueueSnackbar(Err.response?.data?.message || "Upload failed", { variant: "error" });
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
     }
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    uploadFile(file);
+  };
+
+  /* ================= MATERIAL SCROLL ================= */
+  const goToMaterial = (messageId) => {
+    const hasMaterials = materials.some((m) => m.messageId === messageId);
+    if (!hasMaterials) return;
+
+    setSelectedMessageId(messageId);
+    materialsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  /* ================= FILE ICON ================= */
+  const getFileIcon = (filename = "") => {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    if (ext === "pdf") return <FileText size={18} className="text-red-400" />;
+    if (["png", "jpg", "jpeg", "gif"].includes(ext)) return <ImageIcon size={18} className="text-green-400" />;
+    if (["xls", "xlsx", "csv"].includes(ext)) return <FileSpreadsheet size={18} className="text-emerald-400" />;
+    if (["ppt", "pptx"].includes(ext)) return <Presentation size={18} className="text-orange-400" />;
+    return <File size={18} className="text-slate-400" />;
+  };
+
+  /* ================= EDIT MESSAGE ================= */
+  const handleEdit = (msg) => {
+    setEditingMsg(msg);
+    setNewMessage(msg.text);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
+
+  /* ================= DELETE ================= */
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${BACKEND}/groups/message/delete/${id}`, { withCredentials: true });
+      setMessages(prev => prev.filter(m => m._id !== id));
+      enqueueSnackbar("Message deleted", { variant: "success" });
+    } catch {
+      enqueueSnackbar("Delete failed", { variant: "error" });
+    }
+  };
+
+  /* ================= REPORT ================= */
+  const reportUser = (id) => {
+    setReportTarget({ id, type: "user" });
+    setReportOpen(true);
+  };
+
+  const reportMessage = (id) => {
+    setReportTarget({ id, type: "message" });
+    setReportOpen(true);
+  };
+
+  const isQuestionTyping = newMessage.startsWith("/q ");
 
   function handleConfirm() {
-    console.log("hello from modal Its workinng")
-    axios.post(`${import.meta.env.VITE_BACKEND_URL}/groups/leave`,
-      { groupId },
-      { withCredentials: true })
-      .then((res) => {
-        enqueueSnackbar("You’ve left the group.",
-          {
-            variant: "success",
-            anchorOrigin: {
-              horizontal: "right",
-              vertical: "bottom"
-            }
-          })
-        navigate("/")
-      }).catch(() => {
-        enqueueSnackbar("Error Leaving group try again after refresh", { variant: "error", anchorOrigin: { horizontal: "right", vertical: "bottom" } })
+    axios.post(`${BACKEND}/groups/leave`, { groupId }, { withCredentials: true })
+      .then(() => {
+        enqueueSnackbar("You’ve left the group.", { variant: "success" });
+        navigate("/");
       })
-      .finally(() => {
-        setOpen(false)
+      .catch(() => {
+        enqueueSnackbar("Error leaving group", { variant: "error" });
       })
+      .finally(() => setOpen(false));
   }
 
-
+  /* ================= UI ================= */
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-
-      <main className="flex-1 p-4 md:p-8 space-y-8">
-        {/* ================= HERO ================= */}
-        <ConfirmModal
-          open={open}
-          onClose={() => setOpen(false)}
-          onConfirm={handleConfirm}
-          title={"Exit Group"}
-          desc={"You will no longer have access to group messages and updates. You can request to join again later."}
-          buttonName={"Leave"}
-        />
-        <div className="rounded-2xl p-6 md:p-10 bg-gradient-to-r from-indigo-600 to-purple-600 shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex-1">
-              {/* Title */}
-              <h2 className="text-3xl md:text-4xl font-bold">
-                {loading ? (
-                  <Skeleton className="h-10 w-72" />
-                ) : (
-                  group?.groupName
-                )}
-              </h2>
-
-              {/* Description */}
-              <div className="mt-4 text-white/80 max-w-2xl">
-                {loading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                    <Skeleton className="h-4 w-4/6" />
-                  </div>
-                ) : (
-                  group?.description
-                )}
-              </div>
-
-              {/* Meta */}
-              <div className="flex flex-wrap gap-6 mt-6 text-sm text-white/90">
-                {loading ? (
-                  <>
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-40" />
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Users size={16} />
-                      {group?.members?.length || 0} members
-                    </div>
-                  </>
-                )}
-              </div>
+    <div className="space-y-8">
+      {/* HEADER */}
+      <div className="rounded-2xl p-6 sm:p-8 bg-linear-to-r from-primary to-purple-600 shadow-xl flex flex-col md:flex-row justify-between items-start gap-6 text-foreground">
+        <div className="max-w-prose">
+          <h2 className="text-2xl md:text-3xl font-bold break-words">
+            {loading ? <Skeleton className="h-10 w-72" /> : group?.groupName}
+          </h2>
+          <p className="mt-3 text-white/90 text-sm md:text-base leading-relaxed">
+            {group?.description}
+          </p>
+          {group?.isLocked && (
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-red-500/20 text-red-100 rounded-lg text-sm border border-red-500/30">
+              🔒 Locked by Admin
             </div>
-
-            {/* Buttons */}
-            <div className="flex flex-col gap-3">
-              {loading ? (
-                <>
-                  <Skeleton className="h-10 w-36" />
-                  <Skeleton className="h-10 w-36" />
-                </>
-              ) : (
-                <>
-                  <button onClick={() => {
-                    bottomRef.current.scrollIntoView()
-                  }} className="flex items-center gap-2 px-5 py-2 bg-white/20 hover:bg-white/30 rounded-xl backdrop-blur transition">
-                    <MessageCircle size={18} /> Open Chat
-                  </button>
-                  <button onClick={() => setOpen(true)} className="px-5 py-2 bg-slate-900 hover:bg-slate-800 rounded-xl transition">
-                    Leave Group
-                  </button>
-                </>
-              )}
+          )}
+          <div className="flex flex-wrap gap-4 mt-5 text-sm font-medium">
+            <div className="flex items-center gap-2 bg-card px-3 py-1.5 rounded-full">
+              <Users size={16} />
+              {group?.members?.length || 0} Members
             </div>
           </div>
         </div>
 
-        {/* ================= CONTENT GRID ================= */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ================= LEFT ================= */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* -------- Pinned Messages -------- */}
-            {/* <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg"> */}
-            {/*   <h3 className="text-xl font-semibold mb-6"> */}
-            {/*     Pinned Messages */}
-            {/*   </h3> */}
-            {/**/}
-            {/*   <div className="space-y-4"> */}
-            {/*     {loading */}
-            {/*       ? Array.from({ length: 2 }).map((_, i) => ( */}
-            {/*         <div */}
-            {/*           key={i} */}
-            {/*           className="border border-slate-700 rounded-xl p-4 bg-slate-800" */}
-            {/*         > */}
-            {/*           <Skeleton className="h-4 w-full mb-2" /> */}
-            {/*           <Skeleton className="h-4 w-5/6 mb-2" /> */}
-            {/*           <Skeleton className="h-3 w-32" /> */}
-            {/*         </div> */}
-            {/*       )) */}
-            {/*       : group?.pinnedMessages?.length > 0 */}
-            {/*         ? group.pinnedMessages.map((msg) => ( */}
-            {/*           <div */}
-            {/*             key={msg._id} */}
-            {/*             className="border border-amber-500/40 rounded-xl p-4 bg-slate-800" */}
-            {/*           > */}
-            {/*             <p>{msg.text}</p> */}
-            {/*             <p className="text-sm text-slate-400 mt-2"> */}
-            {/*               {msg.author} • {msg.time} */}
-            {/*             </p> */}
-            {/*           </div> */}
-            {/*         )) */}
-            {/*         : ( */}
-            {/*           <p className="text-slate-400">No pinned messages</p> */}
-            {/*         )} */}
-            {/*   </div> */}
-            {/* </section> */}
+        {/* ACTION BUTTONS */}
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          <button
+            onClick={() => {
+              setReportTarget({ id: group?._id, type: "group" });
+              setReportOpen(true);
+            }}
+            className="flex-1 md:flex-none px-5 py-2.5 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded-xl text-sm font-semibold transition"
+          >
+            Report Group
+          </button>
+          {isMember ? (
+            <button
+              onClick={() => setOpen(true)}
+              className="flex-1 md:flex-none px-5 py-2.5 bg-red-600 hover:bg-red-700 text-foreground rounded-xl text-sm font-bold shadow-lg shadow-red-600/20 transition active:scale-95"
+            >
+              Leave
+            </button>
+          ) : (
+            <button
+              onClick={handleJoinGroup}
+              disabled={group?.isLocked}
+              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg transition active:scale-95
+                ${group?.isLocked
+                  ? "bg-card text-muted cursor-not-allowed"
+                  : "bg-primary hover:bg-primary-hover text-foreground shadow-primary/20"
+                }`}
+            >
+              {group?.isLocked ? "Locked" : "Join Group"}
+            </button>
+          )}
+        </div>
+      </div>
 
-            {/* ================= GROUP CHAT ================= */}
-            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-              <h3 className="text-xl font-semibold mb-6">
-                Group Chat
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* CHAT */}
+        <div className="lg:col-span-3">
+          {!isMember && !loading ? (
+            <div className="bg-card border border-border rounded-3xl p-12 sm:p-20 text-center shadow-xl flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden group">
+              <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-purple-600/5 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+              
+              <div className="relative z-10">
+                <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mb-8 mx-auto ring-4 ring-[var(--color-accent-primary)]/10">
+                  <Users size={32} className="text-primary" />
+                </div>
+                
+                <h3 className="text-2xl md:text-3xl font-bold mb-4 bg-linear-to-r from-text-primary to-text-secondary bg-clip-text text-transparent">
+                  Private Study Group
+                </h3>
+                
+                <p className="text-muted text-base md:text-lg mb-10 max-w-md mx-auto leading-relaxed">
+                  This group's discussions and materials are private. Join the community to collaborate and access shared resources.
+                </p>
+                
+                <button
+                  onClick={handleJoinGroup}
+                  disabled={group?.isLocked}
+                  className={`px-10 py-4 rounded-2xl text-lg font-bold shadow-2xl transition-all active:scale-95 flex items-center gap-3 mx-auto
+                    ${group?.isLocked 
+                      ? "bg-card text-muted cursor-not-allowed" 
+                      : "bg-primary hover:bg-primary-hover text-foreground shadow-primary/40 hover:shadow-primary/60"
+                    }`}
+                >
+                  {group?.isLocked ? "Group Locked" : "Join Group Now"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <section className="bg-card border border-border rounded-3xl p-4 sm:p-6 flex flex-col h-[600px] shadow-xl">
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                Group Chat <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
               </h3>
 
-              {/* Messages */}
-              <div className="h-96 overflow-y-auto space-y-4 pr-2 custom-scroll" ref={chatContainerRef}>
-                {messages.length === 0 ? (
-                  <p className="text-slate-400 text-sm">
-                    No messages yet. Start the conversation.
-                  </p>
-                ) : (
-                  messages.map((msg) => {
-                    const isMe = msg.sender?._id === user?._id;
+              <div
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar"
+              >
+                {messages.map((msg, index) => {
+                  const isMe = String(msg.sender?._id || msg.sender) === String(user?._id);
+                  const count = materials.reduce((acc, m) => m.messageId === msg._id ? acc + 1 : acc, 0);
 
-                    return (
+                  return (
+                    <div
+                      ref={index === messages.length - 1 ? lastMessageRef : null}
+                      key={msg._id}
+                      className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                    >
                       <div
-                        key={msg._id}
-                        className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                        className={`relative group max-w-[85%] sm:max-w-md px-4 py-3 rounded-2xl border transition-all duration-200
+                          ${msg.optimistic ? "opacity-60" : ""}
+                          ${msg.isQuestion
+                            ? "bg-warning/10 border-warning text-warning-contrast shadow-lg shadow-warning-base/5"
+                            : isMe
+                              ? "bg-primary text-foreground border-accent-primary shadow-lg shadow-primary/20"
+                              : "bg-background border-border hover:border-border-muted"
+                          }`}
                       >
-                        <div
-                          className={`max-w-sm px-4 py-3 rounded-2xl shadow-md transition ${isMe
-                            ? "bg-indigo-600 text-white rounded-br-none"
-                            : "bg-slate-800 border border-slate-700 text-slate-200 rounded-bl-none"
-                            }`}
+                        <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === msg._id ? null : msg._id);
+                            }}
+                            className="text-muted hover:text-foreground p-1 rounded-lg hover:bg-text-primary/10"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                        </div>
+
+                        {openMenuId === msg._id && (
+                          <div className={`absolute ${isMe ? "right-0" : "left-0"} top-10 w-32 bg-card border border-border rounded-xl shadow-2xl z-30 overflow-hidden`}>
+                            {isMe && !group?.isLocked ? (
+                              <>
+                                <button
+                                  onClick={() => { handleEdit(msg); setOpenMenuId(null); }}
+                                  className="block w-full text-left px-3 py-2.5 text-sm hover:bg-card transition"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => { handleDelete(msg._id); setOpenMenuId(null); }}
+                                  className="block w-full text-left px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => { reportMessage(msg._id); setOpenMenuId(null); }}
+                                className="flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-card transition"
+                              >
+                                <Flag size={14} /> Report
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {!isMe && (
+                          <p className="text-xs font-bold text-primary mb-1">
+                            {msg.sender?.name}
+                          </p>
+                        )}
+
+                        {msg.isQuestion && (
+                          <div className="inline-block text-[10px] px-2 py-0.5 mb-2 rounded bg-warning/20 text-warning-contrast font-bold uppercase tracking-wider">
+                            ❓ Question
+                          </div>
+                        )}
+
+                        <p
+                          onClick={() => goToMaterial(msg._id)}
+                          className="text-[15px] sm:text-base cursor-pointer hover:underline underline-offset-4 decoration-primary break-words leading-relaxed"
                         >
-                          {!isMe && (
-                            <p className="text-xs text-indigo-400 font-medium mb-1">
-                              {msg.sender?.name}
+                          {msg.text}
+                          {msg.edited && (
+                            <span className="text-[10px] ml-2 opacity-40">(edited)</span>
+                          )}
+                        </p>
+
+                        <div className="flex items-center justify-between mt-2">
+                          {msg.createdAt && (
+                            <p className="text-[10px] text-muted opacity-60">
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           )}
-
-                          <p className="text-sm leading-relaxed break-words">
-                            {msg.text}
-                          </p>
-
-                          <p className="text-[10px] text-slate-400 mt-2 text-right">
-                            {new Date(msg.createdAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
+                          <div className="flex gap-2">
+                            {isMember && msg.isQuestion && !group?.isLocked && (
+                              <button
+                                onClick={() => { setSelectedMessageId(msg._id); fileInputRef.current.click(); }}
+                                className="text-[10px] font-bold text-primary hover:text-primary-hover transition"
+                              >
+                                Upload Solution
+                              </button>
+                            )}
+                            {count > 0 && (
+                              <p className="text-[10px] font-bold text-primary">
+                                📎 {count} material{count > 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })
-                )}
-
-                <div ref={bottomRef} />
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Input */}
-              <div className="mt-6 flex gap-3">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition"
-                  placeholder="Type your message..."
-                />
+              {/* INPUT */}
+              {group?.isLocked ? (
+                <div className="mt-6 p-6 bg-red-500/5 border border-red-500/20 rounded-2xl text-center">
+                  <p className="text-red-400 font-medium flex items-center justify-center gap-2">
+                    🔒 Locked by Admin
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-6">
+                  {uploading && (
+                    <div className="mb-4 bg-primary/10 border border-primary/20 rounded-xl p-3 flex items-center gap-4 transition-all duration-300">
+                      <div className="bg-primary/20 p-2 rounded-lg">
+                        <svg className="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-primary/70 mb-1 uppercase tracking-tighter">
+                          Uploading Material ({uploadProgress}%)
+                        </p>
+                        <div className="w-full bg-card rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                <button
-                  onClick={sendMessage}
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-medium transition shadow-md"
-                >
-                  Send
-                </button>
-                <input type="file" onChange={handleFileUpload} />
+                  <div className="flex gap-2 sm:gap-3">
+                    <div className="relative flex-1">
+                      <input
+                        ref={inputRef}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                        className={`w-full bg-input-background border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 transition shadow-inner
+                      ${isQuestionTyping
+                            ? "border-warning/50 ring-warning-base/20"
+                            : "border-border ring-[var(--color-accent-primary)]/20"
+                          }`}
+                        placeholder="Ask a question with /q ..."
+                      />
+                    </div>
 
-              </div>
+                    <button
+                      onClick={sendMessage}
+                      className="bg-primary hover:bg-primary-hover text-foreground px-5 sm:px-8 py-3.5 rounded-xl font-bold transition shadow-lg shadow-primary/20 active:scale-95 flex items-center justify-center shrink-0"
+                    >
+                      Send
+                    </button>
+
+                    <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
+                    <button
+                      onClick={() => { setSelectedMessageId(null); fileInputRef.current.click(); }}
+                      disabled={uploading}
+                      className="p-3.5 bg-background border border-border rounded-xl hover:border-accent-primary transition disabled:opacity-50 shrink-0"
+                    >
+                      📎
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
-          </div>
+          )}
+        </div>
 
-          {/* ================= RIGHT ================= */}
-          <div className="space-y-8">
-            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-              <h3 className="text-xl font-semibold mb-6">
-                Members ({loading ? "..." : group?.members?.length || 0})
+        {/* SIDE BAR (Materials & Members) */}
+        <div className="space-y-8">
+          {/* MATERIALS */}
+          {isMember && (
+            <section ref={materialsRef} className="bg-card border border-border rounded-3xl p-6 shadow-xl">
+              <h3 className="text-lg font-bold mb-6 flex items-center justify-between">
+                Materials
+                <span className="text-[10px] bg-primary/20 text-primary px-2.5 py-1 rounded-full">{materials.length}</span>
               </h3>
-
-              <div className="space-y-4">
-                {loading
-                  ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="w-10 h-10 rounded-full" />
-                      <Skeleton className="h-4 w-32" />
+              <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {materials.length === 0 ? (
+                  <p className="text-center text-muted text-sm py-4">No materials yet.</p>
+                ) : (
+                  materials.map((file) => (
+                    <div
+                      key={file._id}
+                      className={`flex flex-col gap-2 p-3 rounded-xl border transition
+                      ${file.messageId === selectedMessageId ? "bg-primary/20 border-accent-primary" : "bg-background border-border"}`}
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="shrink-0">{getFileIcon(file.originalName)}</div>
+                        <span className="text-xs font-medium truncate">{file.originalName}</span>
+                      </div>
+                      {isMember && (
+                        <a
+                          href={`${BACKEND}/groups/materials/${file._id}/download`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] font-bold text-primary hover:text-primary-hover text-right uppercase tracking-wider"
+                        >
+                          Download
+                        </a>
+                      )}
                     </div>
                   ))
-                  : group?.members?.map((member) => (
-                    <div
-                      key={member._id}
-                      className="flex items-center gap-3"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-semibold">
-                        {member.name?.charAt(0)}
-                      </div>
-                      <span className="text-slate-300">
-                        {member.name}
-                      </span>
-                    </div>
-                  ))}
+                )}
               </div>
             </section>
-          </div>
+          )}
+
+          {/* MEMBERS */}
+          {isMember && (
+            <section className="bg-card border border-border rounded-3xl p-6 shadow-xl">
+              <h3 className="text-lg font-bold mb-6 flex items-center justify-between">
+                Members
+                <span className="text-[10px] bg-primary/20 text-primary px-2.5 py-1 rounded-full">{group?.members?.length || 0}</span>
+              </h3>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {group?.members?.map((member) => (
+                  <div key={member._id} className="group flex justify-between items-center bg-background border border-border p-3 rounded-xl hover:border-border-muted transition">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-8 h-8 rounded-full bg-linear-to-tr from-primary to-purple-500 flex items-center justify-center text-[10px] font-bold shrink-0 text-foreground">
+                        {member.name.charAt(0)}
+                      </div>
+                      <span className="text-sm font-medium truncate text-foreground">{member.name} {member._id === user?._id && <span className="text-[10px] text-primary">(You)</span>}</span>
+                    </div>
+                    {member._id !== user?._id && (
+                      <button
+                        onClick={() => reportUser(member._id)}
+                        className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-destructive text-[10px] font-bold uppercase transition hover:text-destructive/80"
+                      >
+                        Report
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
-      </main>
+      </div>
+
+      <ConfirmModal
+        open={open}
+        onConfirm={handleConfirm}
+        onClose={() => setOpen(false)}
+        title="Exit Study Group?"
+        desc="You will lose access to all chat history and study materials shared in this group."
+        buttonName="Leave Group"
+      />
+
+      <ReportModal
+        open={reportOpen}
+        setOpen={setReportOpen}
+        targetId={reportTarget?.id}
+        targetType={reportTarget?.type}
+      />
     </div>
   );
 }

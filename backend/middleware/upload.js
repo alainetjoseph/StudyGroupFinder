@@ -12,10 +12,10 @@ if (!fs.existsSync("uploads/temp")) {
 }
 
 const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
+  destination: function (req, file, cb) {
     cb(null, "uploads/temp");
   },
-  filename: function(req, file, cb) {
+  filename: function (req, file, cb) {
     const uniqueName =
       crypto.randomBytes(16).toString("hex") +
       path.extname(file.originalname);
@@ -28,6 +28,8 @@ const fileFilter = (req, file, cb) => {
     "application/pdf",
     "image/png",
     "image/jpeg",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
@@ -39,7 +41,7 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 20MB
   fileFilter,
 });
 

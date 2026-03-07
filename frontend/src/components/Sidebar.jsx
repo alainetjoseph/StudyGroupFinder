@@ -4,7 +4,10 @@ import {
   PlusCircle,
   Search,
   Settings,
-  User
+  User,
+  ShieldCheck,
+  Activity,
+  AlertTriangle
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -12,7 +15,9 @@ const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const items = [
+  const isAdminPath = location.pathname.startsWith("/admin");
+
+  const userItems = [
     { label: "Dashboard", path: "/", icon: LayoutDashboardIcon },
     { label: "Find Groups", path: "/findgroup", icon: Search },
     { label: "Create Group", path: "/creategroup", icon: PlusCircle },
@@ -20,14 +25,23 @@ const Sidebar = () => {
     { label: "Settings", path: "/settings", icon: Settings }
   ];
 
+  const adminItems = [
+    { label: "Admin Panel", path: "/admin", icon: ShieldCheck },
+    { label: "Platform Stats", path: "/admin/stats", icon: Activity },
+    { label: "Reports", path: "/admin/reports", icon: AlertTriangle },
+    { label: "Standard View", path: "/", icon: LayoutDashboardIcon }
+  ];
+
+  const items = isAdminPath ? adminItems : userItems;
+
   function SidebarItem({ icon: Icon, label, path }) {
     const active = location.pathname === path;
     return (
       <div
         onClick={() => navigate(path)}
         className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition ${active
-          ? "bg-indigo-900/40 text-indigo-400"
-          : "text-gray-400 hover:bg-gray-800 hover:text-white"
+          ? "bg-primary/20 text-primary"
+          : "text-muted hover:bg-card hover:text-foreground"
           }`}
       >
         <Icon size={18} />
@@ -53,14 +67,14 @@ const Sidebar = () => {
     }
   };
   return (
-    <aside className="w-72 bg-[#111827] border-r border-gray-800 md:flex flex-col justify-between p-6  hidden">
+    <aside className="w-72 bg-sidebar border-r border-border md:flex flex-col justify-between p-6 hidden">
       {/* Logo */}
       <div>
         <div className="mb-10">
-          <h1 className="text-2xl font-bold text-indigo-400">
+          <h1 className="text-2xl font-bold text-primary">
             StudyGroup
           </h1>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted">
             Find your study tribe
           </p>
         </div>
@@ -79,8 +93,8 @@ const Sidebar = () => {
       </div>
 
       {/* Logout */}
-      <div className="pt-6 border-t border-gray-800">
-        <div className="flex items-center gap-3 p-3 rounded-lg text-red-400 hover:bg-red-900/10 cursor-pointer transition"
+      <div className="pt-6 border-t border-border">
+        <div className="flex items-center gap-3 p-3 rounded-lg text-destructive hover:bg-destructive/10 cursor-pointer transition"
           onClick={handleLogout}>
           <LogOut size={18} />
           <span>Logout</span>

@@ -22,7 +22,7 @@ module.exports = {
           resolve([
             { title: "Joined Groups", count: joinedCount, color: "text-indigo-500", type: "joined" },
             { title: "Groups Created", count: approvedCount, color: "text-green-500", type: "created" },
-            { title: "Pending Requests", count: pendingCount, color: "text-yellow-500", type: "pending" }]);
+          ]);
         }).catch(() => {
           reject()
         })

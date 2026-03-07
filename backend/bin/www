@@ -4,7 +4,7 @@
  * Module dependencies.
  */
 
-var initSocket = require("../socket.js")
+var { initSocket } = require("../socket.js")
 
 var app = require('../app');
 var debug = require('debug')('backend:server');
