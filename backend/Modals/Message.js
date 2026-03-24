@@ -4,7 +4,7 @@ const messageSchema = new mongoose.Schema(
   {
     group: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Group",
+      ref: "groups",
       required: true,
     },
     sender: {
@@ -17,8 +17,13 @@ const messageSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    isQuestion: {
+      type: Boolean,
+      default: false
+    },
+
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Message", messageSchema);
+module.exports = mongoose.model("Messages", messageSchema);

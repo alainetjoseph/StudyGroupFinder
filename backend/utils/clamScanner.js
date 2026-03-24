@@ -18,11 +18,11 @@ async function initClam() {
 async function scanFile(filePath) {
   try {
     const scanner = await initClam();
-    const { isInfected, viruses } = await scanner.scanFile(filePath);
-
+    const data = await scanner.scanFile(filePath);
+    console.log(data)
     return {
-      infected: isInfected,
-      viruses
+      infected: data.isInfected,
+      viruses: data.viruses
     };
   } catch (err) {
     console.error("ClamAV error:", err);

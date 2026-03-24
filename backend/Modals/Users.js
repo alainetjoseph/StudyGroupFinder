@@ -23,6 +23,10 @@ let userSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    // banReason: {
+    //   type: String,
+    //   default: ""
+    // },
     subjects: {
       type: [String],
       default: []

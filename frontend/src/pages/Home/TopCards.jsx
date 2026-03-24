@@ -8,25 +8,23 @@ const TopCards = () => {
   const Icons = {
     joined: User,
     created: PlusCircle,
-    pending: Hourglass
   }
 
   const styleMap = {
-    joined: "text-indigo-500",
-    created: "text-green-500",
-    pending: "text-yellow-500"
+    joined: "text-primary",
+    created: "text-success",
   };
   function StatCard({ icon: Icon, value, label, type }) {
     const color = styleMap[type];
 
     return (
-      <div className="bg-[#1e2530] border border-gray-800 rounded-xl p-6">
-        <div className="p-2 rounded-lg w-fit mb-4 bg-white/5">
+      <div className="bg-card border border-border rounded-xl p-6">
+        <div className="p-2 rounded-lg w-fit mb-4 bg-card">
           <Icon size={22} className={color} />
         </div>
 
-        <h3 className="text-3xl font-bold text-white">{value}</h3>
-        <p className="text-gray-500 text-sm">{label}</p>
+        <h3 className="text-3xl font-bold text-foreground">{value}</h3>
+        <p className="text-muted text-sm">{label}</p>
       </div>
     );
   }
@@ -38,7 +36,7 @@ const TopCards = () => {
       })
   }, [])
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
       {cards.map((item) => (
         <StatCard
           key={item.type}

@@ -5,9 +5,9 @@ import { Navigate, Outlet } from "react-router-dom"
 const AdminRoutes = () => {
   const { user } = useContext(AuthContext)
 
-  // if (!user) {
-  //   return <Navigate to={'/login'} replace />
-  // }
+  if (!user) {
+    return <Navigate to={'/login'} replace />
+  }
   if (!user.isAdmin) {
     return <Navigate to={'/'} replace />
   }

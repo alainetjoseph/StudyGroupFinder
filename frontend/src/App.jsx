@@ -13,6 +13,14 @@ import AdminHome from './pages/AdminHome'
 import AdminRoutes from './Utils/AdminRoutes'
 import Settings from './components/SettingsPage'
 import Profile from './components/ProfilePage'
+import BlockedPage from './pages/BlockedPage'
+import Layout from './components/Layout'
+import axios from 'axios'
+
+import { setupInterceptors } from './api/interceptors'
+import PlatformStats from './pages/PlatformAnalytics'
+
+setupInterceptors();
 
 function App() {
   return (
@@ -21,14 +29,20 @@ function App() {
         <Routes>
           <Route path='/login' element={<Login />} />
           <Route path='/signup' element={<Signup />} />
+          <Route path='/blocked' element={<BlockedPage />} />
           <Route element={<ProtectedRoutes />}>
-            <Route path='/' element={<Home />} />
-            <Route path='/creategroup' element={<CreateGroup />} />
-            <Route path='/findgroup' element={<FindGroups />} />
-            <Route path='/group/:groupId' element={<GroupPage />} />
-            <Route path='/settings' element={<Settings />} />
-            <Route path='/profile' element={<Profile />} />
-            <Route path='/admin' element={<AdminHome />} />
+            <Route element={<Layout />}>
+              <Route path='/' element={<Home />} />
+              <Route path='/creategroup' element={<CreateGroup />} />
+              <Route path='/findgroup' element={<FindGroups />} />
+              <Route path='/group/:groupId' element={<GroupPage />} />
+              <Route path='/settings' element={<Settings />} />
+              <Route path='/profile' element={<Profile />} />
+              <Route element={<AdminRoutes />}>
+                <Route path='/admin' element={<AdminHome />} />
+                <Route path='/admin/stats' element={<PlatformStats/>}/>
+              </Route>
+            </Route>
           </Route>
         </Routes>
         <SnackbarProvider />

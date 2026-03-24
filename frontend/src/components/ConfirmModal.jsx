@@ -1,8 +1,28 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info, AlertCircle, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
-export default function ConfirmModal({ open, onClose, onConfirm, title, desc, buttonName }) {
+/**
+ * @param {object} props
+ * @param {boolean} props.open
+ * @param {function} props.onClose
+ * @param {function} props.onConfirm
+ * @param {string} props.title
+ * @param {string} props.desc
+ * @param {string} props.buttonName
+ * @param {'danger' | 'warning' | 'info'} props.variant
+ * @param {boolean} props.loading
+ */
+export default function ConfirmModal({ 
+  open, 
+  onClose, 
+  onConfirm, 
+  title, 
+  desc, 
+  buttonName, 
+  variant = "danger",
+  loading = false
+}) {
   // Close on ESC
   useEffect(() => {
     const handleEsc = (e) => {
@@ -22,9 +42,28 @@ export default function ConfirmModal({ open, onClose, onConfirm, title, desc, bu
 
   if (!open) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  const variants = {
+    danger: {
+      icon: <AlertTriangle size={24} className="text-destructive" />,
+      bg: "bg-destructive/10",
+      button: "bg-destructive hover:bg-destructive/80 shadow-[var(--color-danger)]/20",
+    },
+    warning: {
+      icon: <AlertCircle size={24} className="text-warning" />,
+      bg: "bg-warning/10",
+      button: "bg-warning hover:bg-warning/80 shadow-[var(--color-warning)]/20",
+    },
+    info: {
+      icon: <Info size={24} className="text-primary" />,
+      bg: "bg-primary/10",
+      button: "bg-primary hover:bg-primary-hover shadow-primary/20",
+    }
+  };
 
+  const currentVariant = variants[variant] || variants.danger;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         onClick={onClose}
@@ -32,41 +71,40 @@ export default function ConfirmModal({ open, onClose, onConfirm, title, desc, bu
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg rounded-xl bg-gray-800 text-white shadow-2xl transform transition-all scale-100 opacity-100">
-
-        {/* Content */}
-        <div className="px-6 pt-6 pb-4">
-          <div className="flex items-start gap-4">
-
+      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border text-foreground shadow-2xl transform transition-all animate-in fade-in zoom-in duration-200">
+        
+        <div className="p-6">
+          <div className="flex flex-col items-center text-center">
             {/* Icon */}
-            <div className="p-2 rounded-lg w-fit mb-4 bg-white/5">
-              <AlertTriangle size={22} color={"red"} />
+            <div className={`p-3 rounded-full mb-4 ${currentVariant.bg}`}>
+              {currentVariant.icon}
             </div>
 
-            {/* Text */}
-            <div>
-              <h3 className="text-lg font-semibold">
-                {title}
-              </h3>
-              <p className="mt-2 text-sm text-gray-400">
-                {desc}
-              </p>
-            </div>
+            {/* Content */}
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              {title}
+            </h3>
+            <p className="text-muted text-sm leading-relaxed">
+              {desc}
+            </p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-700/30 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
+        <div className="bg-card/50 px-6 py-4 flex gap-3 rounded-b-2xl">
           <button
             onClick={onClose}
-            className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/20 transition"
+            disabled={loading}
+            className="flex-1 rounded-xl bg-background border border-border px-4 py-2.5 text-sm font-semibold hover:bg-card transition-all disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="rounded-md bg-red-500 px-4 py-2 text-sm font-semibold hover:bg-red-400 transition"
+            disabled={loading}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 ${currentVariant.button}`}
           >
+            {loading && <Loader2 size={16} className="animate-spin" />}
             {buttonName}
           </button>
         </div>
