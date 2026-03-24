@@ -51,7 +51,7 @@ export default function FindGroups() {
         <h1 className="text-2xl md:text-3xl font-bold mb-2 break-words">
           Find Study Groups 🔎
         </h1>
-        <p className="text-muted text-sm md:text-base">
+        <p className="text-white/80 text-sm md:text-base">
           Discover communities that match your learning goals.
         </p>
       </div>

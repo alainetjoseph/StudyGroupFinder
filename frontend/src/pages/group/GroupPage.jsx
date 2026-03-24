@@ -135,9 +135,17 @@ export default function StudyGroupPage() {
       setMessages((prev) => prev.filter((m) => m._id !== data.messageId));
     };
 
+    const handleMaterialUploaded = (material) => {
+      setMaterials((prev) => {
+        if (prev.some(m => m._id === material._id)) return prev;
+        return [material, ...prev];
+      });
+    };
+
     socket.on("receiveMessage", handleReceive);
     socket.on("messageUpdated", handleUpdate);
     socket.on("messageDeleted", handleDelete);
+    socket.on("materialUploaded", handleMaterialUploaded);
     socket.on("errorMessage", (data) => {
       enqueueSnackbar(data.message, { variant: "error" });
     });
@@ -146,6 +154,7 @@ export default function StudyGroupPage() {
       socket.off("receiveMessage", handleReceive);
       socket.off("messageUpdated", handleUpdate);
       socket.off("messageDeleted", handleDelete);
+      socket.off("materialUploaded", handleMaterialUploaded);
       socket.off("errorMessage");
     };
   }, [groupId]);
@@ -260,7 +269,10 @@ export default function StudyGroupPage() {
         }
       );
 
-      setMaterials((prev) => [res.data, ...prev]);
+      setMaterials((prev) => {
+        if (prev.some(m => m._id === res.data._id)) return prev;
+        return [res.data, ...prev];
+      });
       enqueueSnackbar("Material uploaded", { variant: "success" });
       setSelectedMessageId(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -391,7 +403,7 @@ export default function StudyGroupPage() {
               disabled={group?.isLocked}
               className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg transition active:scale-95
                 ${group?.isLocked
-                  ? "bg-card text-muted cursor-not-allowed"
+                  ? "bg-cardcccccccccc text-muted cursor-not-allowed"
                   : "bg-primary hover:bg-primary-hover text-foreground shadow-primary/20"
                 }`}
             >
@@ -407,26 +419,26 @@ export default function StudyGroupPage() {
           {!isMember && !loading ? (
             <div className="bg-card border border-border rounded-3xl p-12 sm:p-20 text-center shadow-xl flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden group">
               <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-purple-600/5 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-              
+
               <div className="relative z-10">
                 <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mb-8 mx-auto ring-4 ring-[var(--color-accent-primary)]/10">
                   <Users size={32} className="text-primary" />
                 </div>
-                
+
                 <h3 className="text-2xl md:text-3xl font-bold mb-4 bg-linear-to-r from-text-primary to-text-secondary bg-clip-text text-transparent">
                   Private Study Group
                 </h3>
-                
+
                 <p className="text-muted text-base md:text-lg mb-10 max-w-md mx-auto leading-relaxed">
                   This group's discussions and materials are private. Join the community to collaborate and access shared resources.
                 </p>
-                
+
                 <button
                   onClick={handleJoinGroup}
                   disabled={group?.isLocked}
                   className={`px-10 py-4 rounded-2xl text-lg font-bold shadow-2xl transition-all active:scale-95 flex items-center gap-3 mx-auto
-                    ${group?.isLocked 
-                      ? "bg-card text-muted cursor-not-allowed" 
+                    ${group?.isLocked
+                      ? "bg-card text-muted cursor-not-allowed"
                       : "bg-primary hover:bg-primary-hover text-foreground shadow-primary/40 hover:shadow-primary/60"
                     }`}
                 >

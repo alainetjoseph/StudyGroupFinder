@@ -18,6 +18,7 @@ import Layout from './components/Layout'
 import axios from 'axios'
 
 import { setupInterceptors } from './api/interceptors'
+import PlatformStats from './pages/PlatformAnalytics'
 
 setupInterceptors();
 
@@ -39,6 +40,7 @@ function App() {
               <Route path='/profile' element={<Profile />} />
               <Route element={<AdminRoutes />}>
                 <Route path='/admin' element={<AdminHome />} />
+                <Route path='/admin/stats' element={<PlatformStats/>}/>
               </Route>
             </Route>
           </Route>

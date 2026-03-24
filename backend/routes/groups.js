@@ -36,6 +36,7 @@ router.post("/create", auth, apiLimiter, async (req, res) => {
     });
 
     user.groupsCreated.push(newGroup._id);
+    user.groupsJoined.push(newGroup._id);
     user.save().then(() => {
       res.status(201).json({
         message: "Group created successfully",
@@ -210,6 +211,11 @@ router.post("/:groupId/upload", auth, apiLimiter, upload.single("file"), async (
           ? req.body.messageId
           : null
     });
+
+    await material.populate("uploadedBy", "name");
+
+    const io = getIO();
+    io.to(req.params.groupId).emit("materialUploaded", material);
 
     res.json(material);
 

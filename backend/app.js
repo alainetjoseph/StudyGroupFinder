@@ -58,9 +58,9 @@ const sessionMiddleware = session({
   }),
   cookie: {
     maxAge: 1000 * 60 * 10,
-    // secure: process.env.mode === "production",
-    // httpOnly: true,
-    // sameSite: "lax"
+    secure: process.env.mode === "production",
+    httpOnly: true,
+    sameSite: "lax"
   },
   resave: false,
   saveUninitialized: false

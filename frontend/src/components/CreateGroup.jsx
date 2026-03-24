@@ -31,6 +31,7 @@ export default function CreateGroup() {
           description,
           createdBy: storedUser._id
         })
+        , credentials: "include"
       });
 
       const data = await res.json();
@@ -61,7 +62,7 @@ export default function CreateGroup() {
       {/* ===== Hero Banner ===== */}
       <div className="bg-gradient-primary rounded-2xl p-6 text-foreground shadow-lg">
         <h1 className="text-2xl md:text-3xl font-bold mb-2">Create a New Study Group 🚀</h1>
-        <p className="text-muted text-sm md:text-base">
+        <p className="text-white/80 text-sm md:text-base">
           Start your own learning community and grow together.
         </p>
       </div>

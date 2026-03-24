@@ -15,10 +15,9 @@ module.exports = {
         let user = await User.findById(id)
         Promise.all([
           Groups.countDocuments({ _id: { $in: user.groupsJoined } }),
-          Groups.countDocuments({ _id: { $in: user.groupsCreated }, status: "approved" }),
-          Groups.countDocuments({ _id: { $in: user.groupsCreated }, status: "pending" })
-        ]).then(([joinedCount, approvedCount, pendingCount]) => {
-          console.log(joinedCount, approvedCount, pendingCount);
+          Groups.countDocuments({ _id: { $in: user.groupsCreated } }),
+        ]).then(([joinedCount, approvedCount]) => {
+          console.log(joinedCount, approvedCount);
           resolve([
             { title: "Joined Groups", count: joinedCount, color: "text-indigo-500", type: "joined" },
             { title: "Groups Created", count: approvedCount, color: "text-green-500", type: "created" },
