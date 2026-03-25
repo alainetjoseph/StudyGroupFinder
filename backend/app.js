@@ -56,12 +56,12 @@ const sessionMiddleware = session({
     mongoUrl: process.env.MONGODB_URL,
     collectionName: "sessions",
   }),
-  cookie: {
-    maxAge: 1000 * 60 * 10,
-    secure: process.env.mode === "production",
-    httpOnly: true,
-    sameSite: "lax"
-  },
+cookie: {
+  maxAge: 1000 * 60 * 10,
+  secure: true,          // MUST be true in production (HTTPS)
+  httpOnly: true,
+  sameSite: "none"       // 🔥 REQUIRED for cross-site cookies
+},
   resave: false,
   saveUninitialized: false
 });
