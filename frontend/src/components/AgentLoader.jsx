@@ -31,24 +31,22 @@ export default function StudyGroupLoader({ isLoading, onFinished }) {
       className={`fixed inset-0 z-[9999] flex items-center justify-center bg-background backdrop-blur-md transition-all duration-700 ease-in-out
         ${isExiting ? 'opacity-0 pointer-events-none scale-105' : 'opacity-100'}`}
     >
-      <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-8">
 
-        {/* NETWORK GRAPH */}
-        <div className="relative w-40 h-40">
-
-          {/* Lines */}
-          <div className="absolute inset-0">
-            <span className="line line1"></span>
-            <span className="line line2"></span>
-            <span className="line line3"></span>
-          </div>
-
-          {/* Nodes */}
-          <div className="node node-center"></div>
-          <div className="node node-top"></div>
-          <div className="node node-left"></div>
-          <div className="node node-right"></div>
-          <div className="node node-bottom"></div>
+        {/* NETWORK GRAPH (NODES ONLY) */}
+        <div className="relative w-32 h-32">
+          {/* Central Hub */}
+          <div className="node node-center shadow-[0_0_30px_var(--primary)]"></div>
+          
+          {/* Orbital Nodes */}
+          <div className="node node-top delay-75 shadow-[0_0_15px_var(--accent)]"></div>
+          <div className="node node-left delay-150 shadow-[0_0_15px_var(--primary)]"></div>
+          <div className="node node-right delay-300 shadow-[0_0_15px_var(--accent)]"></div>
+          <div className="node node-bottom delay-500 shadow-[0_0_15px_var(--primary)]"></div>
+          
+          {/* Subtle Outer Ring */}
+          <div className="absolute inset-0 rounded-full border border-primary/10 animate-spin-slow"></div>
+          <div className="absolute inset-4 rounded-full border border-accent/5 animate-spin-reverse-slow"></div>
         </div>
 
         {/* TEXT */}
@@ -60,62 +58,46 @@ export default function StudyGroupLoader({ isLoading, onFinished }) {
       <style>{`
         .node {
           position: absolute;
-          width: 10px;
-          height: 10px;
+          width: 12px;
+          height: 12px;
           border-radius: 9999px;
-          background: #6366f1;
-          box-shadow: 0 0 12px rgba(99, 102, 241, 0.8),
-                      0 0 24px rgba(168, 85, 247, 0.4);
-          animation: pulse 1.6s ease-in-out infinite;
+          background: var(--primary);
+          animation: pulse-theme 2s ease-in-out infinite;
         }
 
-        .node-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        .node-top { top: 0; left: 50%; transform: translateX(-50%); }
+        .node-center { top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; }
+        .node-top { top: 0; left: 50%; transform: translateX(-50%); background: var(--accent); }
         .node-left { left: 0; top: 50%; transform: translateY(-50%); }
-        .node-right { right: 0; top: 50%; transform: translateY(-50%); }
+        .node-right { right: 0; top: 50%; transform: translateY(-50%); background: var(--accent); }
         .node-bottom { bottom: 0; left: 50%; transform: translateX(-50%); }
 
-        .line {
-          position: absolute;
-          background: linear-gradient(90deg, #6366f1, #a855f7);
-          opacity: 0.6;
-          transform-origin: left;
-          animation: draw 1.6s ease-in-out infinite;
+        @keyframes pulse-theme {
+          0%, 100% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.3); opacity: 1; }
         }
 
-        .line1 {
-          width: 50%;
-          height: 1px;
-          top: 50%;
-          left: 50%;
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
-        .line2 {
-          width: 50%;
-          height: 1px;
-          top: 50%;
-          left: 50%;
-          transform: rotate(60deg);
+        @keyframes spin-reverse-slow {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
         }
 
-        .line3 {
-          width: 50%;
-          height: 1px;
-          top: 50%;
-          left: 50%;
-          transform: rotate(-60deg);
+        .animate-spin-slow {
+          animation: spin-slow 10s linear infinite;
         }
 
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.4); opacity: 1; }
+        .animate-spin-reverse-slow {
+          animation: spin-reverse-slow 15s linear infinite;
         }
 
-        @keyframes draw {
-          0% { transform: scaleX(0); opacity: 0; }
-          50% { transform: scaleX(1); opacity: 0.8; }
-          100% { transform: scaleX(0); opacity: 0; }
-        }
+        .delay-75 { animation-delay: 0.2s; }
+        .delay-150 { animation-delay: 0.4s; }
+        .delay-300 { animation-delay: 0.6s; }
+        .delay-500 { animation-delay: 0.8s; }
       `}</style>
     </div>
   );
@@ -135,14 +117,26 @@ function RotatingText() {
   useEffect(() => {
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % messages.length);
-    }, 2000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <p className="text-sm text-muted-foreground transition-opacity duration-500">
-      {messages[index]}
-    </p>
+    <div className="h-6 flex items-center justify-center overflow-hidden">
+      <p className="text-sm font-medium tracking-widest text-foreground/80 uppercase animate-fade-in">
+        {messages[index]}
+      </p>
+      
+      <style>{`
+        @keyframes fade-in {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.8s ease-out forwards;
+        }
+      `}</style>
+    </div>
   );
 }
