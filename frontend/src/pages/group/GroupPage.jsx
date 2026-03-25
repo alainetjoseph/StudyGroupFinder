@@ -17,7 +17,10 @@ import ConfirmModal from "../../components/ConfirmModal";
 import ReportModal from "../../components/ReportModal";
 
 const socket = io(import.meta.env.VITE_BACKEND_URL, {
-  withCredentials: true
+  withCredentials: true,
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
 });
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL;
@@ -106,7 +109,17 @@ export default function StudyGroupPage() {
   useEffect(() => {
     if (!groupId) return;
 
-    socket.emit("joinGroup", { groupId });
+    const onConnect = () => {
+      console.log("Socket reconnected, joining group:", groupId);
+      socket.emit("joinGroup", { groupId });
+    };
+
+    // Emit immediately if already connected
+    if (socket.connected) {
+      onConnect();
+    }
+
+    socket.on("connect", onConnect);
 
     axios
       .get(`${BACKEND}/groups/${groupId}/messages`, {
@@ -151,6 +164,7 @@ export default function StudyGroupPage() {
     });
 
     return () => {
+      socket.off("connect", onConnect);
       socket.off("receiveMessage", handleReceive);
       socket.off("messageUpdated", handleUpdate);
       socket.off("messageDeleted", handleDelete);
@@ -238,6 +252,12 @@ export default function StudyGroupPage() {
 
     setMessages((prev) => [...prev, optimisticMessage]);
     setNewMessage("");
+
+    if (!socket.connected) {
+      enqueueSnackbar("Lost connection to server. Reconnecting...", { variant: "warning" });
+      socket.connect();
+      return;
+    }
 
     socket.emit("sendMessage", {
       groupId,
