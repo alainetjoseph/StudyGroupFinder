@@ -3,25 +3,22 @@ import React, {
   useEffect,
   useLayoutEffect,
   useRef,
-  useState
+  useState,
+  useMemo,
+  useCallback
 } from "react";
 
 import { Users, MoreVertical, Flag, FileText, Image as ImageIcon, FileSpreadsheet, Presentation, File } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { enqueueSnackbar } from "notistack";
-import { io } from "socket.io-client";
 
 import { AuthContext } from "../../contexts/AuthContext";
 import ConfirmModal from "../../components/ConfirmModal";
 import ReportModal from "../../components/ReportModal";
-
-const socket = io(import.meta.env.VITE_BACKEND_URL, {
-  withCredentials: true,
-  reconnection: true,
-  reconnectionAttempts: 10,
-  reconnectionDelay: 1000,
-});
+import { connectSocket, disconnectSocket } from "../../services/socketService";
+import { useGroupChat } from "../../hooks/useGroupChat";
+import { useMaterials } from "../../hooks/useMaterials";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
@@ -35,14 +32,22 @@ export default function StudyGroupPage() {
   const navigate = useNavigate();
 
   const [group, setGroup] = useState(null);
-  const [materials, setMaterials] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const {
+    messages,
+    setMessages,
+    sendMessage: sendSocketMessage,
+    loadingMessages
+  } = useGroupChat(groupId, user);
+
+  const {
+    materials,
+    uploading,
+    uploadProgress,
+    uploadMaterial
+  } = useMaterials(groupId);
 
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
-
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [editingMsg, setEditingMsg] = useState(null);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
@@ -71,6 +76,8 @@ export default function StudyGroupPage() {
         { withCredentials: true }
       );
       enqueueSnackbar("Joined group!", { variant: "success" });
+      // Connect socket after successful join/auth
+      connectSocket();
       // Refresh group data to update membership status
       const res = await axios.get(`${BACKEND}/groups/${groupId}`, { withCredentials: true });
       setGroup(res.data.group);
@@ -89,112 +96,49 @@ export default function StudyGroupPage() {
       .then((res) => {
         setGroup(res.data.group);
         setLoading(false);
+        // Connect socket if user is already a member
+        const isUserMember = res.data.group?.members?.some((m) => String(m._id || m) === String(user?._id));
+        if (isUserMember) {
+          connectSocket();
+        }
       })
       .catch(() => {
         setLoading(false);
         enqueueSnackbar("Try refreshing the page", { variant: "error" });
       });
-  }, [groupId]);
-
-  /* ================= FETCH MATERIALS ================= */
-  useEffect(() => {
-    axios
-      .get(`${BACKEND}/groups/${groupId}/materials`, {
-        withCredentials: true
-      })
-      .then((res) => setMaterials(res.data));
-  }, [groupId]);
-
-  /* ================= SOCKET CHAT ================= */
-  useEffect(() => {
-    if (!groupId) return;
-
-    const onConnect = () => {
-      console.log("Socket reconnected, joining group:", groupId);
-      socket.emit("joinGroup", { groupId });
-    };
-
-    // Emit immediately if already connected
-    if (socket.connected) {
-      onConnect();
-    }
-
-    socket.on("connect", onConnect);
-
-    axios
-      .get(`${BACKEND}/groups/${groupId}/messages`, {
-        withCredentials: true
-      })
-      .then((res) => setMessages(res.data));
-
-    const handleReceive = (message) => {
-      setMessages((prev) => {
-        const filtered = prev.filter(m => !(m.optimistic && m.text === message.text && (m.sender?._id || m.sender) === (message.sender?._id || message.sender)));
-        return [...filtered, message];
-      });
-    };
-
-    const handleUpdate = (data) => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m._id === data.messageId
-            ? { ...m, text: data.text, edited: true }
-            : m
-        )
-      );
-    };
-
-    const handleDelete = (data) => {
-      setMessages((prev) => prev.filter((m) => m._id !== data.messageId));
-    };
-
-    const handleMaterialUploaded = (material) => {
-      setMaterials((prev) => {
-        if (prev.some(m => m._id === material._id)) return prev;
-        return [material, ...prev];
-      });
-    };
-
-    socket.on("receiveMessage", handleReceive);
-    socket.on("messageUpdated", handleUpdate);
-    socket.on("messageDeleted", handleDelete);
-    socket.on("materialUploaded", handleMaterialUploaded);
-    socket.on("errorMessage", (data) => {
-      enqueueSnackbar(data.message, { variant: "error" });
-    });
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("receiveMessage", handleReceive);
-      socket.off("messageUpdated", handleUpdate);
-      socket.off("messageDeleted", handleDelete);
-      socket.off("materialUploaded", handleMaterialUploaded);
-      socket.off("errorMessage");
+      disconnectSocket();
     };
-  }, [groupId]);
+  }, [groupId, user?._id]);
+
+  /* ================= MATERIAL COUNT MAP ================= */
+  const materialCountMap = useMemo(() => {
+    const counts = {};
+    materials.forEach((m) => {
+      if (m.messageId) {
+        counts[m.messageId] = (counts[m.messageId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [materials]);
 
   /* ================= SMART AUTO SCROLL ================= */
-
-  // useLayoutEffect(() => {
-  //   const container = chatContainerRef.current;
-  //   if (!container) return;
-  //
-  //   const isNearBottom =
-  //     container.scrollHeight -
-  //     container.scrollTop -
-  //     container.clientHeight <
-  //     100;
-  //
-  //   if (isNearBottom) {
-  //     container.scrollTop = container.scrollHeight;
-  //   }
-  // }, [messages]);
 
   useLayoutEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
 
-    container.scrollTop = container.scrollHeight;
+    // Smart scroll: only scroll if user was already near bottom
+    const isNearBottom =
+      container.scrollHeight -
+      container.scrollTop -
+      container.clientHeight <
+      150;
+
+    if (isNearBottom || messages.some(m => m.optimistic)) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   /* ================= CLICK OUTSIDE MENU ================= */
@@ -241,73 +185,21 @@ export default function StudyGroupPage() {
       text = newMessage.replace("/q ", "");
     }
 
-    const optimisticMessage = {
-      _id: `temp-${Date.now()}`,
-      sender: user,
-      text: text,
-      isQuestion: isQuestion,
-      createdAt: new Date().toISOString(),
-      optimistic: true
-    };
-
-    setMessages((prev) => [...prev, optimisticMessage]);
+    sendSocketMessage({ text, isQuestion });
     setNewMessage("");
-
-    if (!socket.connected) {
-      enqueueSnackbar("Lost connection to server. Reconnecting...", { variant: "warning" });
-      socket.connect();
-      return;
-    }
-
-    socket.emit("sendMessage", {
-      groupId,
-      userId: user?._id,
-      text,
-      isQuestion
-    });
   };
 
   /* ================= FILE UPLOAD ================= */
-  const uploadFile = async (file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("messageId", selectedMessageId);
-
-    try {
-      setUploading(true);
-      setUploadProgress(0);
-
-      const res = await axios.post(
-        `${BACKEND}/groups/${groupId}/upload`,
-        formData,
-        {
-          withCredentials: true,
-          onUploadProgress: (e) => {
-            const percent = Math.round((e.loaded * 100) / e.total);
-            setUploadProgress(percent);
-          }
-        }
-      );
-
-      setMaterials((prev) => {
-        if (prev.some(m => m._id === res.data._id)) return prev;
-        return [res.data, ...prev];
-      });
-      enqueueSnackbar("Material uploaded", { variant: "success" });
-      setSelectedMessageId(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (Err) {
-      enqueueSnackbar(Err.response?.data?.message || "Upload failed", { variant: "error" });
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e, directMessageId) => {
     const file = e.target.files[0];
     if (!file) return;
-    uploadFile(file);
+    
+    // Pass directMessageId if available (from "Upload Solution") or use state
+    // passing it directly avoids stale state issues
+    await uploadMaterial(file, directMessageId || selectedMessageId);
+    
+    setSelectedMessageId(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   /* ================= MATERIAL SCROLL ================= */
@@ -423,7 +315,7 @@ export default function StudyGroupPage() {
               disabled={group?.isLocked}
               className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg transition active:scale-95
                 ${group?.isLocked
-                  ? "bg-cardcccccccccc text-muted cursor-not-allowed"
+                  ? "bg-card text-muted cursor-not-allowed"
                   : "bg-primary hover:bg-primary-hover text-foreground shadow-primary/20"
                 }`}
             >
@@ -478,11 +370,8 @@ export default function StudyGroupPage() {
               >
                 {messages.map((msg, index) => {
                   const isMe = String(msg.sender?._id || msg.sender) === String(user?._id);
-                  const count = materials.reduce((acc, m) => m.messageId === msg._id ? acc + 1 : acc, 0);
-
                   return (
                     <div
-                      ref={index === messages.length - 1 ? lastMessageRef : null}
                       key={msg._id}
                       className={`flex ${isMe ? "justify-end" : "justify-start"}`}
                     >
@@ -573,9 +462,9 @@ export default function StudyGroupPage() {
                                 Upload Solution
                               </button>
                             )}
-                            {count > 0 && (
+                            {materialCountMap[msg._id] > 0 && (
                               <p className="text-[10px] font-bold text-primary">
-                                📎 {count} material{count > 1 ? 's' : ''}
+                                📎 {materialCountMap[msg._id]} material{materialCountMap[msg._id] > 1 ? 's' : ''}
                               </p>
                             )}
                           </div>
@@ -637,7 +526,7 @@ export default function StudyGroupPage() {
                       Send
                     </button>
 
-                    <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
+                    <input ref={fileInputRef} type="file" onChange={(e) => handleFileUpload(e)} className="hidden" />
                     <button
                       onClick={() => { setSelectedMessageId(null); fileInputRef.current.click(); }}
                       disabled={uploading}

@@ -37,7 +37,8 @@ const initSocket = (server) => {
 
   const app = require('./app');
   io.use((socket, next) => {
-    app.sessionMiddleware(socket.request, socket.request.res || {}, next);
+    // Avoid using socket.request.res as per requirement
+    app.sessionMiddleware(socket.request, {}, next);
   });
 
   io.use((socket, next) => {
@@ -52,29 +53,58 @@ const initSocket = (server) => {
     console.log("Socket connected:", socket.id);
 
     // Join group room
-    socket.on("joinGroup", ({ groupId }) => {
-      console.log("join group", groupId)
-      socket.join(groupId);
+    socket.on("joinGroup", async ({ groupId }) => {
+      try {
+        const userId = socket.request.session.user;
+        const Groups = require("./Modals/Groups");
+        const group = await Groups.findById(groupId);
+
+        if (!group) {
+          return socket.emit("errorMessage", { message: "Group not found" });
+        }
+
+        const isMember = group.members.some(m => String(m) === String(userId));
+        if (!isMember) {
+          return socket.emit("errorMessage", { message: "Unauthorized: You are not a member of this group" });
+        }
+
+        console.log("join group", groupId);
+        socket.join(groupId);
+      } catch (err) {
+        console.error("Join group error:", err);
+        socket.emit("errorMessage", { message: "Failed to join group" });
+      }
     });
 
     socket.on("leaveGroup", ({ groupId }) => {
-      console.log("leaving group", groupId)
+      console.log("leaving group", groupId);
       socket.leave(groupId);
     });
 
 
 
     // Handle message sending
-    socket.on("sendMessage", async ({ groupId, text, isQuestion }) => {
+    socket.on("sendMessage", async ({ groupId, text, isQuestion, tempId }) => {
       try {
+        const userId = socket.request.session.user;
         const Groups = require("./Modals/Groups");
         const groupCheck = await Groups.findById(groupId);
-        if (groupCheck && groupCheck.isLocked) {
+
+        if (!groupCheck) {
+          return socket.emit("errorMessage", { message: "Group not found" });
+        }
+
+        // Validate membership
+        const isMember = groupCheck.members.some(m => String(m) === String(userId));
+        if (!isMember) {
+          return socket.emit("errorMessage", { message: "Unauthorized: You cannot send messages to this group" });
+        }
+
+        if (groupCheck.isLocked) {
           socket.emit("errorMessage", { error: "GROUP_LOCKED", message: "This group is locked." });
           return;
         }
 
-        const userId = socket.request.session.user;
         const newMessage = await Message.create({
           group: groupId,
           sender: userId,
@@ -84,9 +114,16 @@ const initSocket = (server) => {
 
         const populated = await newMessage.populate("sender", "name");
 
-        io.to(groupId).emit("receiveMessage", populated);
+        // Convert to plain object and add tempId for frontend deduplication
+        const messageData = populated.toObject();
+        if (tempId) {
+          messageData.tempId = tempId;
+        }
+
+        io.to(groupId).emit("receiveMessage", messageData);
       } catch (err) {
         console.error("Message error:", err);
+        socket.emit("errorMessage", { message: "Failed to send message" });
       }
     });
 
