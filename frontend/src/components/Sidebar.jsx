@@ -7,7 +7,8 @@ import {
   User,
   ShieldCheck,
   Activity,
-  AlertTriangle
+  AlertTriangle,
+  Bot
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -21,6 +22,7 @@ const Sidebar = () => {
     { label: "Dashboard", path: "/", icon: LayoutDashboardIcon },
     { label: "Find Groups", path: "/findgroup", icon: Search },
     { label: "Create Group", path: "/creategroup", icon: PlusCircle },
+    { label: "AI Assistant", path: "/ai", icon: Bot },
     { label: "Profile", path: "/profile", icon: User },
     { label: "Settings", path: "/settings", icon: Settings }
   ];

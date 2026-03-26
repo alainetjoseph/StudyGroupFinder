@@ -15,10 +15,13 @@ import Settings from './components/SettingsPage'
 import Profile from './components/ProfilePage'
 import BlockedPage from './pages/BlockedPage'
 import Layout from './components/Layout'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import axios from 'axios'
 
 import { setupInterceptors } from './api/interceptors'
 import PlatformStats from './pages/PlatformAnalytics'
+import AiChat from './components/AiChat'
 
 setupInterceptors();
 
@@ -29,6 +32,8 @@ function App() {
         <Routes>
           <Route path='/login' element={<Login />} />
           <Route path='/signup' element={<Signup />} />
+          <Route path='/forgot-password' element={<ForgotPassword />} />
+          <Route path='/reset-password/:token' element={<ResetPassword />} />
           <Route path='/blocked' element={<BlockedPage />} />
           <Route element={<ProtectedRoutes />}>
             <Route element={<Layout />}>
@@ -38,9 +43,10 @@ function App() {
               <Route path='/group/:groupId' element={<GroupPage />} />
               <Route path='/settings' element={<Settings />} />
               <Route path='/profile' element={<Profile />} />
+              <Route path='/ai' element={<AiChat />} />
               <Route element={<AdminRoutes />}>
                 <Route path='/admin' element={<AdminHome />} />
-                <Route path='/admin/stats' element={<PlatformStats/>}/>
+                <Route path='/admin/stats' element={<PlatformStats />} />
               </Route>
             </Route>
           </Route>

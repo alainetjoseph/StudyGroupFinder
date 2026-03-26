@@ -11,7 +11,8 @@ import {
   LogOut,
   ShieldCheck,
   Activity,
-  AlertTriangle
+  AlertTriangle,
+  Bot
 } from "lucide-react";
 import { AuthContext } from "../contexts/AuthContext";
 
@@ -26,6 +27,7 @@ const Navbar = () => {
     { label: "Dashboard", path: "/", icon: LayoutDashboardIcon },
     { label: "Find Groups", path: "/findgroup", icon: Search },
     { label: "Create Group", path: "/creategroup", icon: PlusCircle },
+    { label: "AI Assistant", path: "/ai", icon: Bot },
     { label: "Profile", path: "/profile", icon: User },
     { label: "Settings", path: "/settings", icon: Settings }
   ];
@@ -75,9 +77,8 @@ const Navbar = () => {
 
       {/* Mobile Drawer */}
       <div
-        className={`fixed inset-0 top-[60px] bg-sidebar transition-transform duration-300 ease-in-out z-40 ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed inset-0 top-[60px] bg-sidebar transition-transform duration-300 ease-in-out z-40 ${isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex flex-col h-full p-6">
           <div className="space-y-4 flex-1">
@@ -89,11 +90,10 @@ const Navbar = () => {
                   key={item.path}
                   to={item.path}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-4 p-4 rounded-xl transition ${
-                    active
-                      ? "bg-primary/20 text-primary"
-                      : "text-muted hover:bg-card hover:text-foreground"
-                  }`}
+                  className={`flex items-center gap-4 p-4 rounded-xl transition ${active
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted hover:bg-card hover:text-foreground"
+                    }`}
                 >
                   <Icon size={20} />
                   <span className="font-medium text-lg">{item.label}</span>
