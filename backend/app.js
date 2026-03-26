@@ -9,7 +9,7 @@ var cors = require('cors')
 var indexRouter = require('./routes/users');
 var adminRouter = require('./routes/admin');
 var groupRouter = require('./routes/groups');
-
+var aiRouter = require('./routes/ai');
 const session = require('express-session');
 const { default: MongoStore } = require("connect-mongo");
 
@@ -73,5 +73,6 @@ app.sessionMiddleware = sessionMiddleware;
 app.use('/', indexRouter);
 app.use('/admin', adminRouter);
 app.use('/groups', groupRouter);
+app.use('/ai', aiRouter)
 
 module.exports = app;
