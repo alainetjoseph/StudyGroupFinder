@@ -326,7 +326,7 @@ export default function Login() {
                 <label className="font-medium text-muted-foreground">
                   Password
                 </label>
-                <a href="#" className="text-primary hover:text-foreground">
+                <a href="/forgot-password" data-discover="true" className="text-primary hover:text-foreground">
                   Forgot?
                 </a>
               </div>
