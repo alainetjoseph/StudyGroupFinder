@@ -9,6 +9,24 @@ const dns = require("dns");
 // 🔥 Force IPv4 globally (important for Render)
 dns.setDefaultResultOrder("ipv4first");
 
+const net = require("net");
+
+const socket = net.createConnection(465, "smtp.gmail.com");
+
+socket.on("connect", () => {
+  console.log("✅ Connected to Gmail SMTP");
+  socket.end();
+});
+
+socket.on("error", (err) => {
+  console.error("❌ Connection failed:", err.message);
+});
+
+socket.setTimeout(5000, () => {
+  console.error("⏳ Timeout reached");
+  socket.destroy();
+});
+
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
