@@ -12,6 +12,7 @@ var auth = require('../middleware/auth.js')
 var Message = require("../Modals/Message.js")
 const upload = require("../middleware/reportUploads.js");
 const { apiLimiter, authLimiter } = require("../middleware/rateLimiter");
+const { logActivity } = require('../utils/activityLogger.js');
 
 /* GET home page. */
 
@@ -395,7 +396,7 @@ router.post("/forgot-password", authLimiter, async (req, res) => {
 
     // Generate secure random token
     const rawToken = crypto.randomBytes(32).toString("hex");
-    
+
     // Hash token before storing
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
 
@@ -405,7 +406,7 @@ router.post("/forgot-password", authLimiter, async (req, res) => {
     await user.save();
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
-    
+
     sendEmailAsync({
       to: user.email,
       subject: "Password Reset Request",
@@ -444,7 +445,7 @@ router.post("/reset-password/:token", authLimiter, async (req, res) => {
 
     // Set new password
     user.pass = await bcrypt.hash(password, 10);
-    
+
     // Clear reset token fields
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
