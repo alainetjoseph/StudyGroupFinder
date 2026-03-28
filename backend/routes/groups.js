@@ -15,6 +15,7 @@ const path = require("path");
 const upload = require("../middleware/upload.js");
 const scanFile = require("../utils/clamScanner.js");
 const { apiLimiter } = require("../middleware/rateLimiter.js");
+const { logActivity } = require("../utils/activityLogger.js");
 
 /* ================= CREATE GROUP ================= */
 router.post("/create", auth, apiLimiter, async (req, res) => {
@@ -37,12 +38,22 @@ router.post("/create", auth, apiLimiter, async (req, res) => {
 
     user.groupsCreated.push(newGroup._id);
     user.groupsJoined.push(newGroup._id);
-    user.save().then(() => {
-      res.status(201).json({
-        message: "Group created successfully",
-        group: newGroup
-      });
-    })
+    await user.save();
+
+    // Log Activity
+    logActivity({
+      actionType: "GROUP_CREATED",
+      actor: { id: req.user._id, name: req.user.name, type: "user" },
+      target: { id: newGroup._id, name: newGroup.groupName, type: "group" },
+      status: "success",
+      metadata: { subject: newGroup.subject },
+      req
+    });
+
+    res.status(201).json({
+      message: "Group created successfully",
+      group: newGroup
+    });
 
   } catch (error) {
     console.log("CREATE GROUP ERROR:", error);
@@ -96,7 +107,15 @@ router.post("/join-group", auth, async (req, res) => {
     // await session.commitTransaction();
     // session.endSession();
     //
-    console.log("user", userUp)
+    // Log Activity
+    logActivity({
+      actionType: "USER_JOINED_GROUP",
+      actor: { id: userId, name: req.user.name, type: "user" },
+      target: { id: groupId, name: groupCheck.groupName, type: "group" },
+      status: "success",
+      metadata: { groupId },
+      req
+    });
 
     return res.status(200).json({
       status: true,
@@ -158,6 +177,17 @@ router.post("/leave", auth, async (req, res) => {
       { $pull: { groupsJoined: groupId } }
     )
     console.log("leaving from group", leaveGroup);
+
+    // Log Activity
+    logActivity({
+      actionType: "USER_LEFT_GROUP",
+      actor: { id: userId, name: req.user.name, type: "user" },
+      target: { id: groupId, type: "group" },
+      status: "success",
+      metadata: { groupId },
+      req
+    });
+
     res.status(200).json({ status: true, msg: "You Have successfully left the group" })
 
   }
@@ -213,6 +243,16 @@ router.post("/:groupId/upload", auth, apiLimiter, upload.single("file"), async (
     });
 
     await material.populate("uploadedBy", "name");
+
+    // Log Activity
+    logActivity({
+      actionType: "MATERIAL_UPLOADED",
+      actor: { id: req.user._id, name: req.user.name, type: "user" },
+      target: { id: material._id, name: material.originalName, type: "material" },
+      status: "success",
+      metadata: { groupId: req.params.groupId, filename: material.filename },
+      req
+    });
 
     const io = getIO();
     io.to(req.params.groupId).emit("materialUploaded", material);

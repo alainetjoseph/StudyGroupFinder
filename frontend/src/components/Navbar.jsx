@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Activity,
   AlertTriangle,
-  Bot
+  Bot,
+  History
 } from "lucide-react";
 import { AuthContext } from "../contexts/AuthContext";
 
@@ -35,6 +36,7 @@ const Navbar = () => {
   const adminItems = [
     { label: "Admin Panel", path: "/admin", icon: ShieldCheck },
     { label: "Platform Stats", path: "/admin/stats", icon: Activity },
+    { label: "Activity Logs", path: "/admin/logs", icon: History },
     { label: "Reports", path: "/admin/reports", icon: AlertTriangle },
     { label: "Standard View", path: "/", icon: LayoutDashboardIcon }
   ];

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import axios from "axios"
 import { Sparkles } from "lucide-react"
-import Sidebar from "../components/Sidebar"
+const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
 export default function AiChat() {
 
@@ -60,7 +60,7 @@ export default function AiChat() {
         try {
 
             const res = await axios.post(
-                "http://localhost:3000/ai/ask",
+                `${BACKEND}/ai/ask`,
                 { question: currentQuestion },
                 { withCredentials: true }
             )

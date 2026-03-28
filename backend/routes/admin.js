@@ -8,24 +8,22 @@ let Groups = require("../Modals/Groups.js");
 let Reports = require("../Modals/Reports.js");
 let Messages = require("../Modals/Message.js")
 
-let sendEmail = require("../utils/sendEmail.js");
+const { sendEmailAsync } = require("../services/emailService.js");
 
+
+const adminController = require("../controllers/adminController.js");
+const logController = require("../controllers/logController.js");
+const { logActivity } = require("../utils/activityLogger.js");
 
 /* ================= STATS ================= */
 
-router.get("/stats", adminAuth, async (req, res) => {
-  try {
+router.get("/stats", adminAuth, adminController.getStats);
 
-    const users = await User.countDocuments();
-    const groups = await Groups.countDocuments();
-    const reports = await Reports.countDocuments({ status: "pending" });
 
-    res.json({ users, groups, reports });
+/* ================= LOGS ================= */
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+router.get("/logs", adminAuth, logController.getLogs);
+router.get("/logs/types", adminAuth, logController.getActionTypes);
 
 
 /* ================= USERS ================= */
@@ -43,6 +41,52 @@ router.get("/users", adminAuth, async (req, res) => {
   }
 
 });
+ 
+ 
+ /* GET SINGLE USER */
+ 
+ router.get("/users/:id", adminAuth, async (req, res) => {
+ 
+   try {
+ 
+     const user = await User.findById(req.params.id)
+       .select("-pass")
+       .populate("groupsJoined groupsCreated");
+ 
+     if (!user) {
+       return res.status(404).json({ message: "User not found" });
+     }
+ 
+     res.json(user);
+ 
+   } catch (err) {
+     res.status(500).json({ error: err.message });
+   }
+ 
+ });
+
+
+/* GET SINGLE GROUP */
+
+router.get("/groups/:id", adminAuth, async (req, res) => {
+
+  try {
+
+    const group = await Groups.findById(req.params.id)
+      .populate("createdBy", "name email")
+      .populate("members", "name email");
+
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    res.json(group);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+
+});
 
 
 /* BAN USER */
@@ -54,21 +98,28 @@ router.patch("/users/:id/ban", adminAuth, async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { isBanned: true },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (user && user.email) {
-
-      await sendEmail(
-        user.email,
-        "Account Banned",
-        `
-        <h2>Your account has been banned</h2>
-        <p>Your account was banned by admin due to violation of platform policies.</p>
-        `
-      );
-
+      sendEmailAsync({
+        to: user.email,
+        subject: "Account Banned",
+        text: "Your account was banned by admin due to violation of platform policies.",
+        theme: "dark",
+        meta: { userId: user._id, action: "ban" }
+      });
     }
+
+    // Log Activity
+    logActivity({
+      actionType: "USER_BANNED",
+      actor: { id: req.user._id, name: req.user.name, type: "admin" },
+      target: { id: user._id, name: user.name, type: "user" },
+      status: "success",
+      metadata: { userId: user._id },
+      req
+    });
 
     res.json({ message: "User banned" });
 
@@ -88,21 +139,28 @@ router.patch("/users/:id/unban", adminAuth, async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { isBanned: false },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (user && user.email) {
-
-      await sendEmail(
-        user.email,
-        "Account Restored",
-        `
-        <h2>Your account has been restored</h2>
-        <p>You can now access the platform again.</p>
-        `
-      );
-
+      sendEmailAsync({
+        to: user.email,
+        subject: "Account Restored",
+        text: "Your account has been restored. You can now access the platform again.",
+        theme: "dark",
+        meta: { userId: user._id, action: "unban" }
+      });
     }
+
+    // Log Activity
+    logActivity({
+      actionType: "USER_UNBANNED",
+      actor: { id: req.user._id, name: req.user.name, type: "admin" },
+      target: { id: user._id, name: user.name, type: "user" },
+      status: "success",
+      metadata: { userId: user._id },
+      req
+    });
 
     res.json({ message: "User unbanned" });
 
@@ -119,7 +177,19 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
 
   try {
 
-    await User.findByIdAndDelete(req.params.id);
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    // Log Activity
+    if (user) {
+      logActivity({
+        actionType: "USER_DELETED",
+        actor: { id: req.user._id, name: req.user.name, type: "admin" },
+        target: { id: user._id, name: user.name, type: "user" },
+        status: "success",
+        metadata: { userId: user._id },
+        req
+      });
+    }
 
     res.json({ message: "User deleted" });
 
@@ -160,18 +230,28 @@ router.delete("/groups/:id", adminAuth, async (req, res) => {
       const creator = await User.findById(group.createdBy);
 
       if (creator?.email) {
-
-        await sendEmail(
-          creator.email,
-          "Group Deleted",
-          `
-          <h2>Your group has been deleted</h2>
-          <p>The group <b>${group.name}</b> was removed by admin.</p>
-          `
-        );
-
+        sendEmailAsync({
+          to: creator.email,
+          subject: "Group Deleted",
+          text: `The group "${group.name}" was removed by an administrator.`,
+          theme: "dark",
+          meta: { groupId: group._id, action: "delete_group" }
+        });
       }
 
+
+    }
+
+    // Log Activity
+    if (group) {
+      logActivity({
+        actionType: "GROUP_DELETED",
+        actor: { id: req.user._id, name: req.user.name, type: "admin" },
+        target: { id: group._id, name: group.groupName || group.name, type: "group" },
+        status: "success",
+        metadata: { groupId: group._id },
+        req
+      });
     }
 
     res.json({ message: "Group deleted" });
@@ -202,21 +282,30 @@ router.patch("/groups/:id/toggle-lock", adminAuth, async (req, res) => {
         ? "Group Locked"
         : "Group Unlocked";
 
-      const message = group.isLocked
-        ? `
-        <h2>Your group has been locked</h2>
-        <p>Group: <b>${group.name}</b></p>
-        <p>The group was locked by admin due to policy violations.</p>
-        `
-        : `
-        <h2>Your group has been unlocked</h2>
-        <p>Group: <b>${group.name}</b></p>
-        <p>Your group is now accessible again.</p>
-        `;
+      const text = group.isLocked
+        ? `The group "${group.name}" was locked by an administrator due to policy violations.`
+        : `Your group "${group.name}" is now accessible again.`;
 
-      await sendEmail(group.createdBy.email, subject, message);
+      sendEmailAsync({
+        to: group.createdBy.email,
+        subject,
+        text,
+        theme: "dark",
+        meta: { groupId: group._id, action: group.isLocked ? "lock_group" : "unlock_group" }
+      });
+
 
     }
+
+    // Log Activity
+    logActivity({
+      actionType: group.isLocked ? "GROUP_LOCKED" : "GROUP_UNLOCKED",
+      actor: { id: req.user._id, name: req.user.name, type: "admin" },
+      target: { id: group._id, name: group.groupName || group.name, type: "group" },
+      status: "success",
+      metadata: { groupId: group._id, isLocked: group.isLocked },
+      req
+    });
 
     res.json({ message: "Group status updated" });
 
@@ -349,20 +438,28 @@ router.patch("/reports/:id/resolve", adminAuth, async (req, res) => {
     const report = await Reports.findByIdAndUpdate(
       req.params.id,
       { status: "resolved" },
-      { new: true }
-    ).populate("reporter","name email");
+      { returnDocument: 'after' }
+    ).populate("reporter", "name email");
 
     if (report?.reporter?.email) {
-
-      await sendEmail(
-        report.reporter.email,
-        "Report Resolved",
-        `
-    <h3>Report Status Update</h3>
-    <p>A report regarding your activity has been reviewed and resolved by the admin team.</p>
-    `
-      );
+      sendEmailAsync({
+        to: report.reporter.email,
+        subject: "Report Resolved",
+        text: "A report regarding your activity has been reviewed and resolved by the admin team.",
+        theme: "dark",
+        meta: { reportId: report._id, action: "resolve_report" }
+      });
     }
+
+    // Log Activity
+    logActivity({
+      actionType: "REPORT_RESOLVED",
+      actor: { id: req.user._id, name: req.user.name, type: "admin" },
+      target: { id: report._id, name: `Report #${report._id}`, type: "report" },
+      status: "success",
+      metadata: { reportId: report._id },
+      req
+    });
 
     res.json(report);
 
@@ -380,21 +477,29 @@ router.patch("/reports/:id/dismiss", adminAuth, async (req, res) => {
     const report = await Reports.findByIdAndUpdate(
       req.params.id,
       { status: "dismissed" },
-      { new: true }
-    ).populate("reporter","name email");
+      { returnDocument: 'after' }
+    ).populate("reporter", "name email");
 
     if (report?.reporter?.email) {
-
-      await sendEmail(
-        report.reporter.email,
-        "Report Rejected",
-        `
-    <h3>Report Review Result</h3>
-    <p>The report submitted against you has been reviewed and rejected.</p>
-    `
-      );
-
+      sendEmailAsync({
+        to: report.reporter.email,
+        subject: "Report Rejected",
+        text: "The report submitted against you has been reviewed and rejected.",
+        theme: "dark",
+        meta: { reportId: report._id, action: "dismiss_report" }
+      });
     }
+
+    // Log Activity
+    logActivity({
+      actionType: "REPORT_DISMISSED",
+      actor: { id: req.user._id, name: req.user.name, type: "admin" },
+      target: { id: report._id, name: `Report #${report._id}`, type: "report" },
+      status: "success",
+      metadata: { reportId: report._id },
+      req
+    });
+
     res.json(report);
 
   } catch (err) {
