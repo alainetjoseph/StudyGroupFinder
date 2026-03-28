@@ -10,6 +10,7 @@ module.exports = async function(req, res, next) {
     if (!user || !user.isAdmin) {
       return res.status(403).json({ msg: "Admin access required" });
     }
+    req.user = user;
     next();
   } catch (err) {
     return res.status(500).json({ message: "Server Error" });
