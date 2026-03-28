@@ -3,7 +3,8 @@ var router = express.Router();
 var bcrypt = require('bcrypt')
 var User = require('../Modals/Users.js')
 const crypto = require('crypto');
-const sendEmail = require('../utils/sendEmail');
+const { sendEmailAsync } = require('../services/emailService');
+
 var Report = require("../Modals/Reports.js")
 var Groups = require("../Modals/Groups.js")
 var userHelper = require("../helper/userHelpers.js")
@@ -217,6 +218,16 @@ router.post(
         evidenceImages
       });
 
+      // Log Activity
+      logActivity({
+        actionType: "REPORT_SUBMITTED",
+        actor: { id: req.user._id, name: req.user.name, type: "user" },
+        target: { id: report._id, name: `Report #${report._id}`, type: "report" },
+        status: "success",
+        metadata: { targetType, targetId, reason },
+        req
+      });
+
       res.json({ success: true, report });
 
     } catch (err) {
@@ -395,24 +406,20 @@ router.post("/forgot-password", authLimiter, async (req, res) => {
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
     
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-        <h2 style="color: #4338ca; text-align: center;">Password Reset Request</h2>
-        <p>You are receiving this email because you (or someone else) requested a password reset for your account.</p>
-        <p>Please click the button below to reset your password. This link will expire in 15 minutes.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #4338ca; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
-        </div>
-        <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #666;">If you're having trouble clicking the button, copy and paste the URL below into your web browser:</p>
-        <p style="font-size: 12px; color: #666; word-break: break-all;">${resetUrl}</p>
-      </div>
-    `;
-
-    await sendEmail(user.email, "Password Reset", html);
+    sendEmailAsync({
+      to: user.email,
+      subject: "Password Reset Request",
+      text: "You are receiving this email because you (or someone else) requested a password reset for your account. This link will expire in 15 minutes.",
+      theme: "dark",
+      cta: {
+        text: "Reset Password",
+        link: resetUrl,
+      },
+      meta: { userId: user._id, type: "password_reset" }
+    });
 
     res.status(200).json({ status: true, msg: "If an account with that email exists, we have sent a reset link." });
+
   } catch (error) {
     console.error("Forgot password error:", error);
     res.status(500).json({ status: false, msg: "Error sending reset email" });

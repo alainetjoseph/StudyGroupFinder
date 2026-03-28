@@ -35,7 +35,7 @@ export default function AdminHome() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [reportsLoading, setReportsLoading] = useState(false);
-  
+
   const [banConfirmOpen, setBanConfirmOpen] = useState(false);
   const [userToBan, setUserToBan] = useState(null);
 
@@ -121,14 +121,21 @@ export default function AdminHome() {
   const fetchStats = async () => {
     try {
       const res = await axios.get(`${BACKEND}/admin/stats`, { withCredentials: true })
-      console.log("stats\n", res)
-      setStat(res.data || { users: 0, groups: 0, reports: 0 })
+
+      if (res.data.success && res.data.totals) {
+        setStat({
+          users: res.data.totals.users,
+          groups: res.data.totals.groups,
+          reports: res.data.totals.reports
+        });
+      } else {
+        // Fallback for old structure or unexpected response
+        setStat(res.data || { users: 0, groups: 0, reports: 0 });
+      }
     }
     catch (err) {
-      console.log(err)
+      console.log("Error fetching stats:", err);
     }
-
-
   }
 
   return (
@@ -208,84 +215,87 @@ export default function AdminHome() {
 
             {/* Table */}
             {usersLoading ? (
-              <div className="py-12 flex justify-center">
-                <p className="text-muted animate-pulse">Loading users...</p>
+              <div className="space-y-4 animate-pulse">
+                <div className="h-10 bg-input-background rounded-lg" />
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-16 bg-input-background/50 rounded-lg" />
+                ))}
               </div>
             ) : filteredUsers.length === 0 ? (
               <EmptyState message="No users found matching your search." icon={Users} />
             ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-muted border-b border-border">
-                  <tr>
-                    <th className="text-left py-3">User</th>
-                    <th className="text-left py-3">Email</th>
-                    <th className="text-left py-3">Groups</th>
-                    <th className="text-left py-3">Status</th>
-                    <th className="text-left py-3">Joined</th>
-                    <th className="text-left py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user, index) => (
-                    <tr
-                      key={index}
-                      className="border-b border-border hover:bg-card/20"
-                    >
-                      <td className="py-4 font-medium text-foreground">{user.name}</td>
-                      <td className="py-4 text-muted">{user.email}</td>
-                      <td className="py-4">{user.groupsJoined.length}</td>
-                      <td className="py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${user.isBanned
-                            ? "bg-destructive/20 text-destructive"
-                            : "bg-success/20 text-success"
-                            }`}
-                        >
-                          {user.isBanned ? "Banned" : "Active"}
-                        </span>
-                      </td>
-                      <td className="py-4 text-muted">{user.joined}</td>
-                      <td className="py-4 flex gap-3">
-                        {/* View User */}
-                        <a
-                          href="#"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:text-primary-hover"
-                          title="View User"
-                        >
-                          <ExternalLink size={18} />
-                        </a>
-
-                         {/* Ban / Unban */}
-                        <button
-                          onClick={() => { setUserToBan(user); setBanConfirmOpen(true); }}
-                          disabled={processing.id === user._id}
-                          className={`${user.isBanned
-                            ? "text-success hover:text-success/80"
-                            : "text-destructive hover:text-destructive/80"
-                            } disabled:opacity-50`}
-                          title={user.isBanned ? "Unban User" : "Ban User"}
-                        >
-                          {processing.id === user._id && processing.action === "ban" ? (
-                            <Loader2 className="animate-spin" size={18} />
-                          ) : user.isBanned ? (
-                            <Unlock size={18} />
-                          ) : (
-                            <Ban size={18} />
-                          )}
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-muted border-b border-border">
+                    <tr>
+                      <th className="text-left py-3">User</th>
+                      <th className="text-left py-3">Email</th>
+                      <th className="text-left py-3">Groups</th>
+                      <th className="text-left py-3">Status</th>
+                      <th className="text-left py-3">Joined</th>
+                      <th className="text-left py-3">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((user, index) => (
+                      <tr
+                        key={index}
+
+                        className="border-b border-border hover:bg-card/20 cursor-pointer transition-colors"
+                      >
+                        <td className="py-4 font-medium text-foreground">{user.name}</td>
+                        <td className="py-4 text-muted">{user.email}</td>
+                        <td className="py-4">{user.groupsJoined.length}</td>
+                        <td className="py-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${user.isBanned
+                              ? "bg-destructive/20 text-destructive"
+                              : "bg-success/20 text-success"
+                              }`}
+                          >
+                            {user.isBanned ? "Banned" : "Active"}
+                          </span>
+                        </td>
+                        <td className="py-4 text-muted">{user.joined}</td>
+                        <td className="py-4 flex gap-3">
+                          {/* View User */}
+                          <a
+                            href={`/admin/users/${user._id}`}
+                            onClick={(e) => { e.preventDefault(); navigate(`/admin/users/${user._id}`); }}
+                            className="text-primary hover:text-primary-hover"
+                            title="View User"
+                          >
+                            <ExternalLink size={18} />
+                          </a>
+
+                          {/* Ban / Unban */}
+                          <button
+                            onClick={() => { setUserToBan(user); setBanConfirmOpen(true); }}
+                            disabled={processing.id === user._id}
+                            className={`${user.isBanned
+                              ? "text-success hover:text-success/80"
+                              : "text-destructive hover:text-destructive/80"
+                              } disabled:opacity-50`}
+                            title={user.isBanned ? "Unban User" : "Ban User"}
+                          >
+                            {processing.id === user._id && processing.action === "ban" ? (
+                              <Loader2 className="animate-spin" size={18} />
+                            ) : user.isBanned ? (
+                              <Unlock size={18} />
+                            ) : (
+                              <Ban size={18} />
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-            
+
             {/* User Action Modal */}
-             <ConfirmModal
+            <ConfirmModal
               open={banConfirmOpen}
               onConfirm={toggleBan}
               onClose={() => setBanConfirmOpen(false)}
@@ -335,19 +345,20 @@ export default function AdminHome() {
 
 /* ================= SUB-COMPONENTS ================= */
 
-function GroupTable({ 
-  groups, 
-  groupsLoading, 
-  fetchGroups, 
-  search, 
-  setSearch, 
-  processing, 
-  setProcessing, 
-  BACKEND 
+function GroupTable({
+  groups,
+  groupsLoading,
+  fetchGroups,
+  search,
+  setSearch,
+  processing,
+  setProcessing,
+  BACKEND
 }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const navigate = useNavigate();
 
   const deleteGroup = async () => {
     if (!selectedGroup) return;
@@ -404,8 +415,11 @@ function GroupTable({
       </div>
 
       {groupsLoading ? (
-        <div className="py-12 flex justify-center">
-          <p className="text-muted animate-pulse">Loading groups...</p>
+        <div className="space-y-4 animate-pulse">
+          <div className="h-10 bg-input-background rounded-lg" />
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-16 bg-input-background/50 rounded-lg" />
+          ))}
         </div>
       ) : filteredGroups.length === 0 ? (
         <EmptyState message="No groups found matching your search." icon={ShieldCheck} />
@@ -427,7 +441,8 @@ function GroupTable({
               {filteredGroups.map((group) => (
                 <tr
                   key={group._id}
-                  className="border-b border-border hover:bg-card/20"
+                  onClick={() => navigate(`/admin/groups/${group._id}`)}
+                  className="border-b border-border hover:bg-card/20 cursor-pointer transition-colors"
                 >
                   <td className="py-4 font-medium text-foreground">
                     {group.groupName}
@@ -460,9 +475,8 @@ function GroupTable({
 
                     {/* View Group */}
                     <a
-                      href={`/groups/${group._id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={`/admin/groups/${group._id}`}
+                      onClick={(e) => { e.preventDefault(); navigate(`/admin/groups/${group._id}`); }}
                       className="text-primary hover:text-primary-hover"
                       title="View Group"
                     >
@@ -534,17 +548,17 @@ function GroupTable({
   );
 }
 
-function ReportsTable({ 
-  reports, 
-  reportsLoading, 
-  fetchReports, 
-  search, 
-  setSearch, 
-  processing, 
-  setProcessing, 
-  BACKEND, 
-  setUserToBan, 
-  setBanConfirmOpen 
+function ReportsTable({
+  reports,
+  reportsLoading,
+  fetchReports,
+  search,
+  setSearch,
+  processing,
+  setProcessing,
+  BACKEND,
+  setUserToBan,
+  setBanConfirmOpen
 }) {
   const [filterTab, setFilterTab] = useState("all");
   const [selectedReport, setSelectedReport] = useState(null);
@@ -612,8 +626,11 @@ function ReportsTable({
       </div>
 
       {reportsLoading ? (
-        <div className="py-12 flex justify-center">
-          <p className="text-muted animate-pulse">Loading reports...</p>
+        <div className="space-y-4 animate-pulse">
+          <div className="h-10 bg-input-background rounded-lg" />
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-16 bg-input-background/50 rounded-lg" />
+          ))}
         </div>
       ) : filteredReports.length === 0 ? (
         <EmptyState message={`No ${filterTab === 'all' ? '' : filterTab} reports found.`} icon={AlertTriangle} />
@@ -914,8 +931,8 @@ function ReportDetails({ report, onClose, resolveReport, dismissReport, onBanUse
                       <div
                         key={msg._id}
                         className={`p-2 rounded ${isReported
-                            ? "bg-destructive/20 border border-danger-base"
-                            : "bg-card"
+                          ? "bg-destructive/20 border border-danger-base"
+                          : "bg-card"
                           }`}
                       >
 
@@ -1013,7 +1030,7 @@ function ReportDetails({ report, onClose, resolveReport, dismissReport, onBanUse
         {/* MODERATION ACTIONS & DIRECT PENALTIES (4A, 6A) */}
         {report.status === "pending" && (
           <div className="flex flex-col gap-4 mt-8 pt-6 border-t border-border">
-            
+
             <div className="flex gap-4 justify-between items-center">
               <div>
                 {(report.targetType === "user" || report.targetType === "message") && (

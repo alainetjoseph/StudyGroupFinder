@@ -22,6 +22,9 @@ import axios from 'axios'
 import { setupInterceptors } from './api/interceptors'
 import PlatformStats from './pages/PlatformAnalytics'
 import AiChat from './components/AiChat'
+import UserDetailPage from './pages/admin/UserDetailPage'
+import GroupDetailPage from './pages/admin/GroupDetailPage'
+import AdminLogs from './pages/admin/AdminLogs'
 
 setupInterceptors();
 
@@ -47,6 +50,9 @@ function App() {
               <Route element={<AdminRoutes />}>
                 <Route path='/admin' element={<AdminHome />} />
                 <Route path='/admin/stats' element={<PlatformStats />} />
+                <Route path='/admin/users/:id' element={<UserDetailPage />} />
+                <Route path='/admin/groups/:id' element={<GroupDetailPage />} />
+                <Route path='/admin/logs' element={<AdminLogs />} />
               </Route>
             </Route>
           </Route>

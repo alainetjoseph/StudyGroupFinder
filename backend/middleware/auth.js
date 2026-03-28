@@ -17,6 +17,7 @@ const auth = async (req, res, next) => {
       return res.status(403).json({ status: false, error: "ACCOUNT_BLOCKED" });
     }
 
+    req.user = user;
     next();
   } catch (err) {
     return res.status(500).json({ status: false, msg: "Server Error" });
