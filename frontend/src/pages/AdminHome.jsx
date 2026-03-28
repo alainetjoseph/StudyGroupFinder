@@ -256,7 +256,7 @@ export default function AdminHome() {
                             {user.isBanned ? "Banned" : "Active"}
                           </span>
                         </td>
-                        <td className="py-4 text-muted">{user.joined}</td>
+                        <td className="py-4 text-muted">{new Date(user.createdAt || user.joined).toLocaleDateString(undefined, { dateStyle: 'long' })}</td>
                         <td className="py-4 flex gap-3">
                           {/* View User */}
                           <a
@@ -468,7 +468,7 @@ function GroupTable({
                   </td>
 
                   <td className="py-4 text-muted">
-                    {new Date(group.createdAt).toLocaleDateString()}
+                    {new Date(group.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}
                   </td>
 
                   <td className="py-4 flex gap-3">
