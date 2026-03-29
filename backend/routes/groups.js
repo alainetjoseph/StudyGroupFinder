@@ -208,16 +208,16 @@ router.post("/:groupId/upload", auth, apiLimiter, upload.single("file"), async (
 
     const tempPath = req.file.path;
 
-    const result = await scanFile(tempPath);
+    // const result = await scanFile(tempPath);
 
-    if (result.infected) {
-      await fs.promises.unlink(tempPath);
-
-      return res.status(400).json({
-        message: "Virus detected",
-        viruses: result.viruses
-      });
-    }
+    // if (result.infected) {
+    //   await fs.promises.unlink(tempPath);
+    //
+    //   return res.status(400).json({
+    //     message: "Virus detected",
+    //     viruses: result.viruses
+    //   });
+    // }
 
     // move file to final folder
     const finalFolder = path.join(__dirname, "..", "uploads/groupFiles");

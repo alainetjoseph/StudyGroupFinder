@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { 
-  ArrowLeft, 
-  User, 
-  Mail, 
-  Shield, 
-  Calendar, 
-  BookOpen, 
-  Users, 
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Shield,
+  Calendar,
+  BookOpen,
+  Users,
   PlusCircle,
   Ban,
   Unlock,
@@ -66,7 +66,7 @@ export default function UserDetailPage() {
         <AlertCircle size={48} className="text-destructive mb-4" />
         <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
         <p className="text-muted mb-6">{error}</p>
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary-hover transition"
         >
@@ -83,7 +83,7 @@ export default function UserDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-card rounded-full transition text-muted hover:text-foreground"
           >
@@ -95,12 +95,11 @@ export default function UserDetailPage() {
           </div>
         </div>
         <div className="flex gap-3">
-           <span className={`px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-2 ${
-             user.isBanned ? "bg-destructive/20 text-destructive border border-destructive/30" : "bg-success/20 text-success border border-success/30"
-           }`}>
-             {user.isBanned ? <Ban size={14} /> : <Unlock size={14} />}
-             {user.isBanned ? "Banned" : "Active"}
-           </span>
+          <span className={`px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-2 ${user.isBanned ? "bg-destructive/20 text-destructive border border-destructive/30" : "bg-success/20 text-success border border-success/30"
+            }`}>
+            {user.isBanned ? <Ban size={14} /> : <Unlock size={14} />}
+            {user.isBanned ? "Banned" : "Active"}
+          </span>
         </div>
       </div>
 
@@ -108,29 +107,29 @@ export default function UserDetailPage() {
         {/* Left Column: Basic Info Card */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-card border border-border rounded-2xl p-8 shadow-xl relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4">
-               {user.isAdmin && (
-                 <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider border border-primary/30">
-                   Admin
-                 </span>
-               )}
-             </div>
-             
-             <div className="flex flex-col items-center text-center mb-8">
-               <div className="w-24 h-24 bg-gradient-primary rounded-full flex items-center justify-center mb-4 shadow-primary-glow">
-                 <User size={40} className="text-white" />
-               </div>
-               <h2 className="text-2xl font-bold text-foreground">{user.name}</h2>
-               <p className="text-muted text-sm flex items-center justify-center gap-1 mt-1">
-                 <Mail size={14} /> {user.email}
-               </p>
-             </div>
+            <div className="absolute top-0 right-0 p-4">
+              {user.isAdmin && (
+                <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider border border-primary/30">
+                  Admin
+                </span>
+              )}
+            </div>
 
-             <div className="space-y-4 pt-6 border-t border-border">
-               <InfoItem icon={<Shield size={18} />} label="Role" value={user.isAdmin ? "Administrator" : "User"} />
-               <InfoItem icon={<Calendar size={18} />} label="Joined" value={new Date(user.createdAt || user.joined).toLocaleDateString(undefined, { dateStyle: 'long' })} />
-               <InfoItem icon={<BookOpen size={18} />} label="Subjects" value={user.subjects?.length > 0 ? user.subjects.join(", ") : "None specified"} />
-             </div>
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="w-24 h-24 bg-gradient-primary rounded-full flex items-center justify-center mb-4 shadow-primary-glow">
+                <User size={40} className="text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">{user.name}</h2>
+              <p className="text-muted text-sm flex items-center justify-center gap-1 mt-1">
+                <Mail size={14} /> {user.email}
+              </p>
+            </div>
+
+            <div className="space-y-4 pt-6 border-t border-border">
+              <InfoItem icon={<Shield size={18} />} label="Role" value={user.isAdmin ? "Administrator" : "User"} />
+              <InfoItem icon={<Calendar size={18} />} label="Joined" value={new Date(user.createdAt || user.joined).toLocaleDateString(undefined, { dateStyle: 'long' })} />
+              <InfoItem icon={<BookOpen size={18} />} label="Subjects" value={user.subjects?.length > 0 ? user.subjects.join(", ") : "None specified"} />
+            </div>
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
@@ -155,27 +154,27 @@ export default function UserDetailPage() {
               </h3>
             </div>
             <div className="p-0">
-               {user.groupsJoined?.length > 0 ? (
-                 <div className="divide-y divide-border">
-                   {user.groupsJoined.map((group) => (
-                     <div 
-                        key={group._id} 
-                        onClick={() => navigate(`/admin/groups/${group._id}`)}
-                        className="p-4 hover:bg-background/50 cursor-pointer transition flex items-center justify-between"
-                      >
-                       <div>
-                         <p className="font-medium text-foreground">{group.groupName}</p>
-                         <p className="text-xs text-muted">{group.subject}</p>
-                       </div>
-                       <ArrowLeft size={16} className="rotate-180 text-muted" />
-                     </div>
-                   ))}
-                 </div>
-               ) : (
-                 <div className="p-8 text-center text-muted text-sm">
-                   User hasn't joined any groups yet.
-                 </div>
-               )}
+              {user.groupsJoined?.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {user.groupsJoined.map((group) => (
+                    <div
+                      key={group._id}
+                      onClick={() => navigate(`/admin/groups/${group._id}`)}
+                      className="p-4 hover:bg-background/50 cursor-pointer transition flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{group.groupName}</p>
+                        <p className="text-xs text-muted">{group.subject}</p>
+                      </div>
+                      <ArrowLeft size={16} className="rotate-180 text-muted" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted text-sm">
+                  User hasn't joined any groups yet.
+                </div>
+              )}
             </div>
           </section>
 
@@ -188,29 +187,29 @@ export default function UserDetailPage() {
               </h3>
             </div>
             <div className="p-0">
-               {user.groupsCreated?.length > 0 ? (
-                 <div className="divide-y divide-border">
-                   {user.groupsCreated.map((group) => (
-                     <div 
-                        key={group._id} 
-                        onClick={() => navigate(`/admin/groups/${group._id}`)}
-                        className="p-4 hover:bg-background/50 cursor-pointer transition flex items-center justify-between"
-                      >
-                       <div>
-                         <p className="font-medium text-foreground">{group.groupName}</p>
-                         <p className="text-xs text-muted">Created: {new Date(group.createdAt).toLocaleDateString()}</p>
-                       </div>
-                       <ArrowLeft size={16} className="rotate-180 text-muted" />
-                     </div>
-                   ))}
-                 </div>
-               ) : (
-                 <div className="p-8 text-center text-muted text-sm">
-                   User hasn't created any groups.
-                 </div>
-               )}
+              {user.groupsCreated?.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {user.groupsCreated.map((group) => (
+                    <div
+                      key={group._id}
+                      onClick={() => navigate(`/admin/groups/${group._id}`)}
+                      className="p-4 hover:bg-background/50 cursor-pointer transition flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{group.groupName}</p>
+                        <p className="text-xs text-muted">Created: {new Date(group.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <ArrowLeft size={16} className="rotate-180 text-muted" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted text-sm">
+                  User hasn't created any groups.
+                </div>
+              )}
             </div>
-          </section>Section ends here
+          </section>
         </div>
       </div>
     </div>
