@@ -32,7 +32,6 @@ const Sidebar = () => {
     { label: "Admin Panel", path: "/admin", icon: ShieldCheck },
     { label: "Platform Stats", path: "/admin/stats", icon: Activity },
     { label: "Activity Logs", path: "/admin/logs", icon: History },
-    { label: "Reports", path: "/admin/reports", icon: AlertTriangle },
     { label: "Standard View", path: "/", icon: LayoutDashboardIcon }
   ];
 
@@ -76,7 +75,7 @@ const Sidebar = () => {
       <div>
         <div className="mb-10">
           <h1 className="text-2xl font-bold text-primary">
-            StudyGroup
+            Study Group Finder
           </h1>
           <p className="text-xs text-muted">
             Find your study tribe

@@ -37,7 +37,6 @@ const Navbar = () => {
     { label: "Admin Panel", path: "/admin", icon: ShieldCheck },
     { label: "Platform Stats", path: "/admin/stats", icon: Activity },
     { label: "Activity Logs", path: "/admin/logs", icon: History },
-    { label: "Reports", path: "/admin/reports", icon: AlertTriangle },
     { label: "Standard View", path: "/", icon: LayoutDashboardIcon }
   ];
 
@@ -63,7 +62,7 @@ const Navbar = () => {
       <div className="flex items-center justify-between px-4 py-3">
         {/* Logo */}
         <Link to="/" className="flex flex-col">
-          <span className="text-xl font-bold text-primary">StudyGroup</span>
+          <span className="text-xl font-bold text-primary">Study Group Finder</span>
           <span className="text-[10px] text-muted">Find your study tribe</span>
         </Link>
 
