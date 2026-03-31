@@ -441,7 +441,6 @@ function GroupTable({
               {filteredGroups.map((group) => (
                 <tr
                   key={group._id}
-                  onClick={() => navigate(`/admin/groups/${group._id}`)}
                   className="border-b border-border hover:bg-card/20 cursor-pointer transition-colors"
                 >
                   <td className="py-4 font-medium text-foreground">
